@@ -1,0 +1,428 @@
+use duplicate::duplicate;
+
+use crate::tokenizer::{token::{Token, TokenType}, Tokenizer};
+
+trait Statement {
+}
+
+trait Expression {
+}
+
+trait Value {
+}
+
+struct Call {
+    left: String,
+    parameters: ExpressionList
+}
+
+
+struct ExpressionList {
+    expressions: Vec<Box<dyn Expression>>
+}
+
+
+duplicate! {
+    [ 
+        val_type;
+        [False];
+        [True];
+        [NoneVal];
+        [StringVal];
+        [NumberVal];
+    ]
+    struct val_type;
+    impl Value for val_type {}
+}
+struct Identifier {
+    name: String
+}
+impl Value for String {}
+
+duplicate! {
+    [
+        expr_type;
+        [False];
+        [True];
+        [NoneVal];
+        [StringVal];
+        [NumberVal];
+        [Identifier];
+        [UnaryOp];
+        [Call];
+    ]
+    impl Expression for expr_type {}
+}
+
+
+struct VarDeclaration {
+    identifier: String,
+    expression: Box<dyn Expression>,
+}
+
+impl Statement for VarDeclaration {
+    
+}
+
+struct BinaryOp {
+    left: Box<dyn Expression>,
+    right: Box<dyn Expression>,
+    op_type: BinaryOpType
+}
+impl Expression for BinaryOp {}
+
+struct UnaryOp {
+    operand: Box<dyn Expression>,
+    op_type: UnaryOpType,
+}
+
+enum UnaryOpType {
+    Minus,
+    Not,
+}
+
+pub enum BinaryOpType{
+    Add,
+    Sub,
+    Div,
+    Mul,
+    Or,
+    And,
+    Greater,
+    Less,
+    GreatEqual,
+    LessEqual,
+    EqualEqual,
+    NotEqual,
+    Index,
+    Dot,
+}
+
+pub enum NodeTypes {
+    String,
+    Number,
+    Boolean,
+    NoneType,
+    VarDeclaration,
+    BinaryOp,
+    UnaryOp,
+    Grouping,
+    InBuiltCall,
+    IfStatement,
+    Block,
+    Identifier,
+    WhileLoop,
+    ForLoop,
+    ExprList,
+    VarExprList,
+    FunDeclare,
+    FunCall,
+    ReturnStmt,
+    ArrayLiteral,
+    Array,
+}
+
+pub struct Parser {
+    pub tokens: Vec<Token>,
+    pub curr_token: usize,
+    pub statements: Vec<Box<dyn Statement>>,
+    pub fun_scope: usize,
+}
+
+impl Parser {
+    pub fn create(tokens: Vec<Token>) -> Self {
+        Parser {
+            tokens,
+            curr_token: 0,
+            statements: vec![],
+            fun_scope: 0,
+        }
+    }
+
+    fn is_eot(&self) -> bool {
+        return self.tokens.len() <= self.curr_token;
+    }
+
+    fn advance(&mut self) {
+        if !self.is_eot() {
+            self.curr_token += 1;
+        }
+    }
+
+    fn match_token(&mut self, tt: TokenType) -> bool {
+        match self.peek() {
+            None => return false,
+            Some(x) => {
+                if x.t_type == tt {
+                    self.advance();
+                    return true;
+                }
+                return false;
+            }
+        }
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        if self.is_eot() { return None; }
+        return Some(&self.tokens[self.curr_token]);
+    }
+
+    fn consume(&mut self, tt: TokenType, s: &str) {
+        if !self.match_token(tt) {
+            eprintln!("{}", s);
+        }
+    }
+
+    fn previous(&self) -> Option<&Token> {
+        if self.curr_token == 0 || self.tokens.len() == 0 {
+            return None;
+        }
+        return Some(&self.tokens[self.curr_token-1]);
+    }
+
+    fn var_declaration(&mut self) -> impl Statement {
+        self.consume(TokenType::Identifer, "Expected an identifer");
+        let i = self.previous().unwrap().literal.clone();
+        let mut e: Option<Box<dyn Expression>>  = None;
+    
+        if self.match_token(TokenType::Equal) {
+            e = Some(Box::new(self.or()));
+        }
+
+        VarDeclaration {
+            identifier: i,
+            expression: e.unwrap()
+        }
+    }
+
+    fn expression(&self) -> impl Expression {
+        self.or()
+    }
+
+    fn or(&self) -> impl Expression {
+        let e = self.and();
+        while self.match_token(TokenType::Or) {
+            let prev = self.previous().unwrap();
+            let a = self.and();
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a),
+                op_type: Parser::map_to_boptype(prev.t_type).unwrap(),
+            }
+        }
+        return e;
+    }
+
+    fn and(&self) -> impl Expression {
+        let e = self.equality();
+        while self.match_token(TokenType::And) {
+            let prev = self.previous().unwrap();
+            let a = self.equality();
+            e = BinaryOp {
+                left: e,
+                right: a,
+                op_type: Parser::map_to_boptype(prev.t_type).unwrap(),
+            }
+        }
+        return e;
+    }
+    
+    fn _match_equality_token(&mut self) -> bool {
+        let p = self.peek();
+        match p {
+            None => false,
+            Some(x) => {
+                match x.t_type {
+                    TokenType::EqualEqual
+                    | TokenType::LessEqual 
+                    | TokenType::Less
+                    | TokenType::Greater
+                    | TokenType::GreatEqual 
+                    => {
+                        self.advance();
+                        return true;
+                    }
+                    _ => false,
+                }
+            }
+        }
+    }
+
+    fn map_to_boptype(tt: &TokenType) -> Option<BinaryOpType>{
+        let x = match tt {
+            TokenType::Plus => BinaryOpType::Add,
+            TokenType::Minus => BinaryOpType::Sub,
+            TokenType::Slash => BinaryOpType::Div,
+            TokenType::Mul => BinaryOpType::Mul,
+            TokenType::Or => BinaryOpType::Or,
+            TokenType::And => BinaryOpType::And,
+            TokenType::Greater => BinaryOpType::Greater,
+            TokenType::Less => BinaryOpType::Less,
+            TokenType::GreatEqual => BinaryOpType::GreatEqual,
+            TokenType::LessEqual => BinaryOpType::LessEqual,
+            TokenType::EqualEqual => BinaryOpType::EqualEqual,
+            TokenType::BangEqual => BinaryOpType::NotEqual,
+            TokenType::OpenSquare => BinaryOpType::Index,
+            TokenType::Dot => BinaryOpType::Dot,
+            _ => return None,
+        };
+        return Some(x);
+    }
+
+    fn equality(&self) -> impl Expression {
+        let e = self.term();
+        while self._match_equality_token() { 
+            let prev = self.previous().unwrap();
+            let a = self.term();
+            e = BinaryOp {
+                left: e,
+                right: a,
+                op_type: Parser::map_to_boptype(prev.t_type).unwrap(),
+            }
+        }
+        return e;
+    }
+
+    // + or -
+    fn term(&self) -> impl Expression {
+        let e = self.factor();
+        while self.match_token(TokenType::Plus)
+        || self.match_token(TokenType::Minus)
+        {
+            let prev = self.previous().unwrap();
+            let a = self.factor();
+            e = BinaryOp {
+                left: e,
+                right: a,
+                op_type: Parser::map_to_boptype(prev.t_type).unwrap(),
+            }
+        }
+
+        return e;
+    }
+
+    fn factor(&self) -> impl Expression {
+        let e = self.unary();
+        while self.match_token(TokenType::Mul)
+        || self.match_token(TokenType::Slash)
+        {
+            let prev = self.previous().unwrap();
+            let a = self.unary();
+            e = BinaryOp {
+                left: e,
+                right: a,
+                op_type: Parser::map_to_boptype(prev.t_type).unwrap(),
+            }
+        }
+
+        return e;
+    }
+
+    fn map_to_uoptype(tt: TokenType) -> Option<UnaryOpType> {
+        let x = match tt {
+            TokenType::Bang => UnaryOpType::Not,
+            TokenType::Minus => UnaryOpType::Minus,
+            _ => return None
+        };
+        return Some(x);
+    }
+
+    fn unary(&self) -> impl Expression {
+        let e = self.index();
+        while self.match_token(TokenType::Minus) 
+        || self.match_token(TokenType::Bang)
+        {
+            let prev = self.previous().unwrap();
+            e = UnaryOp {
+                operand: e,
+                op_type: Parser::map_to_uoptype(prev.t_type).unwrap(),
+            }
+        }
+    }
+
+    fn index(&self) {
+        let e = self.dot();
+        while self.match_token(TokenType::OpenSquare) {
+            let prev = self.previous().unwrap();
+            let a = self.term();
+            e = BinaryOp {
+                left: e,
+                right: a,
+                op_type: Parser::map_to_boptype(prev.t_type).unwrap(),
+            }
+        }
+        return e;
+    }
+
+    fn dot(&mut self) -> Box<dyn Expression> {
+        let mut e = self.primary();
+        while self.match_token(TokenType::Dot) {
+            let prev = self.previous().unwrap();
+            let a = &self.primary();
+            e = Box::new(BinaryOp {
+                left: e,
+                right: a,
+                op_type: Parser::map_to_boptype(&prev.t_type).unwrap(),
+            })
+        }
+
+        return e;
+    }
+
+    fn primary(&mut self) -> Box<dyn Expression> {
+        // TODO
+        if self.match_token(TokenType::False) {
+            return Box::new(False {});
+        } else if self.match_token(TokenType::True) {
+            return Box::new(True {});
+        } else if self.match_token(TokenType::None) {
+            return Box::new(NoneVal {});
+        } else if self.match_token(TokenType::String) {
+            return Box::new(StringVal {});
+        } else if self.match_token(TokenType::Number) {
+            return Box::new(NumberVal {});
+        } else if self.match_token(TokenType::Identifer) {
+            let identifier = self.previous().unwrap().literal.clone();
+            if self.match_token(TokenType::OpenParen) {
+                let mut el = ExpressionList {
+                    expressions: vec![],
+                };
+                if !self.match_token(TokenType::CloseParen) {
+                    el = self.expression_list();
+                    self.consume(TokenType::CloseParen, "Expected a ')'.");
+                }
+                return Box::new(Call {
+                    left: identifier,
+                    parameters: el
+                })
+            }
+            return Box::new(Identifier {
+                name: identifier
+            });
+        }
+        panic!("Couldn't parse it!");
+    }
+
+    fn expression_list(&mut self) -> ExpressionList {
+        let mut el = ExpressionList {
+            expressions: vec![]
+        };
+        let mut e = self.expression();
+        el.expressions.push(Box::new(e));
+        while self.match_token(TokenType::Comma) {
+            e = self.expression();
+            el.expressions.push(Box::new(e));
+        }
+
+        return el;
+    }
+
+    pub fn generate_ast(&mut self) -> Option<impl Statement>{
+        if self.match_token(TokenType::Var) {
+            let v = self.var_declaration();
+            self.consume(TokenType::Semicolon, "Expected a semicolon after Variable Declaration");
+            return Some(v);
+        }
+        None
+    }
+}
