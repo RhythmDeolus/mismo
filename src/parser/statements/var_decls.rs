@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use super::Statement;
 use super::super::expressions::Expression;
 #[derive(Debug)]
@@ -14,9 +12,16 @@ impl Statement for VarDeclaration {
             codegen.allocate_variable(&self.identifier);
             let val = e.codegen_expression(codegen);
             let ptr = codegen.get_variable(&self.identifier).unwrap();
-            codegen.builder.build_store(ptr, val.into_float_value());
+            // TODO: Error handling
+            let _ = codegen.builder.build_store(ptr, val.into_float_value());
         } else {
             codegen.allocate_variable(&self.identifier);
         }
+    }
+    fn desugar(&self) -> Box<dyn Statement> {
+        Box::new(VarDeclaration {
+            identifier: self.identifier.clone(),
+            expression: self.expression.as_ref().map(|x| x.desugar())
+        })
     }
 }

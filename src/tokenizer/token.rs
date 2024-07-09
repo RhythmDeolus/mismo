@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum TokenType {
     Comment,
     // Numerical
@@ -46,8 +46,6 @@ pub enum TokenType {
     CloseParen,
     OpenCurly,
     CloseCurly,
-    OpenAngle,
-    CloseAngle,
     // Literals
     String,
     Number,
@@ -106,8 +104,6 @@ impl Display for TokenType {
             TokenType::CloseParen => write!(f, "CloseParen"),
             TokenType::OpenCurly => write!(f, "OpenCurly"),
             TokenType::CloseCurly => write!(f, "CloseCurly"),
-            TokenType::OpenAngle => write!(f, "OpenAngle"),
-            TokenType::CloseAngle => write!(f, "CloseAngle"),
             // Literals
             TokenType::String => write!(f, "String"),
             TokenType::Number => write!(f, "Number"),

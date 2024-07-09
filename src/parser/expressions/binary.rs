@@ -1,12 +1,13 @@
-use inkwell::{
-    values::{AnyValue, AnyValueEnum},
-    IntPredicate,
-};
+use inkwell::values::AnyValue;
 
 use super::Expression;
-#[derive(Debug)]
-pub enum BinaryOpType {
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOpType{
     Assign,
+    PlusEqual,
+    MinusEqual,
+    MulEqual,
+    DivEqual,
     Add,
     Sub,
     Div,
@@ -21,6 +22,7 @@ pub enum BinaryOpType {
     NotEqual,
     Index,
     Dot,
+    Mod,
 }
 
 #[derive(Debug)]
@@ -28,6 +30,17 @@ pub struct BinaryOp {
     pub left: Box<dyn Expression>,
     pub right: Box<dyn Expression>,
     pub op_type: BinaryOpType,
+}
+impl BinaryOp {
+    pub fn map_assign_op_to(op_type: BinaryOpType) -> BinaryOpType {
+        match op_type {
+            BinaryOpType::PlusEqual => BinaryOpType::Add,
+            BinaryOpType::MinusEqual => BinaryOpType::Sub,
+            BinaryOpType::MulEqual => BinaryOpType::Mul,
+            BinaryOpType::DivEqual => BinaryOpType::Div,
+            _ => op_type
+        }
+    }
 }
 impl Expression for BinaryOp {
     fn is_assignable(&self) -> bool {
@@ -38,20 +51,25 @@ impl Expression for BinaryOp {
         }
     }
 
+    fn my_clone(&self) -> Box<dyn Expression> { 
+        Box::new(BinaryOp {
+                    left: self.left.my_clone(),
+                    right: self.right.my_clone(),
+                    op_type: self.op_type
+                })
+    }
+
     fn codegen_expression<'a>(
         &self,
         codegen: &'a crate::codegen::CodeGen,
     ) -> inkwell::values::AnyValueEnum<'a> {
         println!("{:?}", self.op_type);
-        match self.op_type {
-            BinaryOpType::Assign => {
-                let lhs = self.left.get_pointer(codegen);
-                let rhs = self.right.codegen_expression(codegen);
-                let rhs = rhs.into_float_value();
-                let _ = codegen.builder.build_store(lhs, rhs);
-                return rhs.as_any_value_enum();
-            }
-            _ => {}
+        if let BinaryOpType::Assign = self.op_type {
+            let lhs = self.left.get_pointer(codegen);
+            let rhs = self.right.codegen_expression(codegen);
+            let rhs = rhs.into_float_value();
+            let _ = codegen.builder.build_store(lhs, rhs);
+            return rhs.as_any_value_enum();
         }
         let lhs = self.left.codegen_expression(codegen);
         let rhs = self.right.codegen_expression(codegen);
@@ -158,7 +176,40 @@ impl Expression for BinaryOp {
                     .unwrap()
                     .as_any_value_enum()
             }
-            _ => codegen.context.f64_type().const_zero().as_any_value_enum(),
+            BinaryOpType::Mod => {
+                let lhs = lhs.into_float_value();
+                let rhs = rhs.into_float_value();
+                codegen.builder.build_float_rem(lhs, rhs, "")
+                    .unwrap()
+                    .as_any_value_enum()
+            }
+            _ => todo!()
+        }
+    }
+
+    fn desugar(&self) -> Box<dyn Expression> {
+        let left = self.left.desugar();
+        let right = self.right.desugar();
+        match self.op_type {
+            BinaryOpType::PlusEqual
+            | BinaryOpType::MinusEqual
+            | BinaryOpType::MulEqual
+            | BinaryOpType::DivEqual => {
+                Box::new(BinaryOp  {
+                    left: left.my_clone(),
+                    op_type: BinaryOpType::Assign,
+                    right: Box::new(BinaryOp {
+                        left,
+                        right,
+                        op_type: BinaryOp::map_assign_op_to(self.op_type)
+                    })
+                })
+            }
+            _ => Box::new(BinaryOp {
+                left,
+                right,
+                op_type: self.op_type
+            })
         }
     }
 }

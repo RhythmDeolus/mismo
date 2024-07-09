@@ -1,9 +1,15 @@
 use std::{borrow::Borrow, collections::HashMap};
 
+use inkwell::{
+    passes,
+    targets::{CodeModel, Target, TargetMachine}
+};
+
 use crate::{
     codegen::CodeGen, parser::{statements::Statement, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
 };
 
+#[allow(dead_code)] //TODO
 pub struct Compiler {
     keywords_to_tokentype: HashMap<&'static str, TokenType>,
     tokentype_to_keyword: HashMap<TokenType, &'static str>,
@@ -28,7 +34,7 @@ impl Compiler {
         ]);
         let mut map2 = HashMap::new();
         for (k, v) in map.iter() {
-            map2.insert(v.clone(), k.to_owned());
+            map2.insert(*v, k.to_owned());
         }
 
         Compiler {
@@ -61,7 +67,7 @@ impl Compiler {
         }
     }
 
-    fn print_statements(statements: &Vec<Box<dyn Statement>>) {
+    fn print_statements(statements: &[Box<dyn Statement>]) {
         println!("\n========= STATEMENTS =========================\n");
         for (i, stmt) in statements.iter().enumerate() {
             println!("{}: {:#?}\n", i, stmt);
@@ -98,15 +104,48 @@ impl Compiler {
                 Compiler::print_errors(&contents, parser.errors);
             }
         }
+
+        // Desugaring
+        let mut desugared_statements = vec![];
+
+        for stmt in statements.iter() {
+            desugared_statements.push(stmt.desugar())
+        }
+        Compiler::print_statements(&desugared_statements);
+
+
         let context = CodeGen::get_context();
         let mut codegen = CodeGen::create(&context).unwrap();
         codegen.initialize();
-        for stmt in statements {
+        for stmt in desugared_statements {
             codegen.codegen(stmt.borrow());
         }
         codegen.builder.position_at_end(codegen.main.get_last_basic_block().unwrap());
         let _ = codegen.builder.build_return(None);
-        codegen.main.verify(true);
+        for x in codegen.main.get_basic_block_iter() {
+            if x.get_instructions().count() == 0 {
+                codegen.builder.position_at_end(x);
+                let _  = codegen.builder.build_unconditional_branch(x.get_next_basic_block().unwrap());
+            }
+        }
+        let can_work = codegen.main.verify(true);
+        if !can_work {
+            println!("{}", codegen.module.to_string());
+            panic!("Can't Compile!");
+        }
+        let tt = TargetMachine::get_default_triple();
+        let t = Target::from_triple(&tt).unwrap();
+        let tm = t.create_target_machine(
+            &tt,
+            TargetMachine::get_host_cpu_name().to_str().unwrap(),
+            TargetMachine::get_host_cpu_features().to_str().unwrap(),
+            inkwell::OptimizationLevel::None,
+            inkwell::targets::RelocMode::Default,
+            CodeModel::Default,
+        ).unwrap();
+
+        let result = codegen.module.run_passes("mem2reg,loop-unroll", &tm, passes::PassBuilderOptions::create());
+        println!("{:?}", result);
 
         println!("{}", codegen.module.to_string());
 

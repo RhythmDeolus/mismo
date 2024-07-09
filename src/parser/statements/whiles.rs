@@ -19,8 +19,16 @@ impl Statement for WhileStatement {
         codegen.builder.position_at_end(condition_block);
         let i = self.expression.codegen_expression(codegen).into_int_value();
         codegen.builder.build_conditional_branch(i, body_block, return_block).unwrap();
+        codegen.increase_scope();
         codegen.builder.position_at_end(body_block);
         self.statement.generate_code(codegen);
         codegen.builder.build_unconditional_branch(condition_block).unwrap();
+        codegen.decrease_scope();
+    }
+    fn desugar(&self) -> Box<dyn Statement> {
+        Box::new(WhileStatement{
+            expression: self.expression.desugar(),
+            statement: self.statement.desugar()
+        })
     }
 }

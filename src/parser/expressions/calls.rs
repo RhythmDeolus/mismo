@@ -1,14 +1,8 @@
-use std::f64;
-
-use inkwell::types::AnyType;
 use inkwell::values::AnyValue;
-
-use crate::codegen::CodeGen;
-use crate::parser::statements::Statement;
 
 use super::expr_list::ExpressionList;
 use super::Expression;
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum InbuiltCallTypes {
     Print,
     PrintTime,
@@ -37,9 +31,19 @@ impl Expression for InbuiltCall {
                 let f = f.as_any_value_enum().into_function_value();
                 let _ = codegen.builder.build_call(f, &[], "");
             }
-        }
-
-        codegen.context.f64_type().const_zero().as_any_value_enum()
+        }codegen.context.f64_type().const_zero().as_any_value_enum()
+    }
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(InbuiltCall{
+            arguments: self.arguments.desugar(),
+            c_type: self.c_type
+        })
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(InbuiltCall {
+                    c_type: self.c_type,
+                    arguments: self.arguments.my_clone()
+                })
     }
 }
 #[derive(Debug)]
@@ -66,5 +70,17 @@ impl Expression for Call {
         }
         //TODO
         codegen.context.f64_type().const_zero().as_any_value_enum()
+    }
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(Call {
+            left: self.left.clone(),
+            arguments: self.arguments.desugar()
+        })
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(Call {
+                    left: self.left.clone(),
+                    arguments: self.arguments.my_clone()
+                })
     }
 }

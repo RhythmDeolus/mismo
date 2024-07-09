@@ -4,4 +4,10 @@ use super::super::expressions::Expression;
 pub struct ReturnStatement {
     pub expression: Box<dyn Expression>,
 }
-impl Statement for ReturnStatement {}
+impl Statement for ReturnStatement {
+    fn desugar(&self) -> Box<dyn Statement> {
+        Box::new(ReturnStatement {
+            expression: self.expression.desugar()
+        })
+    }
+}

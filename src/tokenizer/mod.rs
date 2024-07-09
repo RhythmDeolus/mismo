@@ -112,14 +112,14 @@ impl<'a> Tokenizer<'a> {
     fn is_alphabetic(&mut self) -> bool {
         match self.peek() {
             None => false,
-            Some(x) => x.is_alphabetic(),
+            Some(x) => x.is_alphabetic() || x == '_',
         }
     }
     
     fn is_alphanumeric(&mut self) -> bool {
         match self.peek() {
             None => false,
-            Some(x) => x.is_alphanumeric(),
+            Some(x) => x.is_alphanumeric() || x == '_',
         }
     }
 
@@ -190,6 +190,11 @@ impl<'a> Tokenizer<'a> {
                 return Some(self.get_token(TokenType::SlashEqual, i));
             }
             return Some(self.get_token(TokenType::Slash, i));
+        } else if self.match_char('%') {
+            if self.match_char('=') {
+                return Some(self.get_token(TokenType::ModEqual, i));
+            }
+            return Some(self.get_token(TokenType::Mod, i));
         } else if self.match_char('!') {
             if self.match_char('=') {
                 return Some(self.get_token(TokenType::BangEqual, i));
@@ -237,7 +242,7 @@ impl<'a> Tokenizer<'a> {
             match keymap.get(&identifier.literal[..]) {
                 None => Some(identifier),
                 Some(x) => {
-                    identifier.t_type = x.clone();
+                    identifier.t_type = *x;
                     Some(identifier)
                 }
             }
@@ -246,5 +251,172 @@ impl<'a> Tokenizer<'a> {
         } else {
             return None
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn get_tokens(s: &str) -> Vec<Token> {
+        let map: HashMap<_, _> = HashMap::from([
+            ("if", TokenType::If),
+            ("else", TokenType::Else),
+            ("var", TokenType::Var),
+            ("return", TokenType::Return),
+            ("func", TokenType::Function),
+            ("while", TokenType::While),
+            ("for", TokenType::For),
+            ("print", TokenType::Print),
+            ("true", TokenType::True),
+            ("false", TokenType::False),
+            ("none", TokenType::None),
+            ("and", TokenType::And),
+            ("or", TokenType::Or),
+        ]);
+        let contents: Vec<char> = s.chars().collect();
+        let mut t = Tokenizer::create(&contents);
+        let mut tokens = vec![];
+        while let Some(x) = t.next_token(&map) {
+            tokens.push(x);
+        }
+        tokens
+    }
+    fn assert_tokentype(t: &Token, tt: TokenType) {
+        assert_eq!(t.t_type, tt);
+    }
+    fn assert_literal(t: &Token, tt: &str) {
+        assert_eq!(t.literal, tt);
+    }
+
+    #[test]
+    fn test_tokenizer() {
+        let comment = "// this is a comment";
+        let tokens = get_tokens(comment);
+        assert_eq!(tokens.len(), 1);
+        assert_tokentype(&tokens[0], TokenType::Comment);
+        assert_literal(&tokens[0], " this is a comment");
+
+        // Numerical Operators
+        let s = "+ - / * % ++ --";
+        let expected_output = [TokenType::Plus, TokenType::Minus,
+                                TokenType::Slash, TokenType::Mul,
+                                TokenType::Mod, TokenType::PlusPlus,
+                                TokenType::MinusMinus];
+        let tokens = get_tokens(s);
+        assert_eq!(tokens.len(), expected_output.len());
+        for i in 0..tokens.len() {
+            assert_tokentype(&tokens[i], expected_output[i]);
+        }
+
+        //keywords
+        let map: HashMap<_, _> = HashMap::from([
+            ("if", TokenType::If),
+            ("else", TokenType::Else),
+            ("var", TokenType::Var),
+            ("return", TokenType::Return),
+            ("func", TokenType::Function),
+            ("while", TokenType::While),
+            ("for", TokenType::For),
+            ("print", TokenType::Print),
+            ("true", TokenType::True),
+            ("false", TokenType::False),
+            ("none", TokenType::None),
+            ("and", TokenType::And),
+            ("or", TokenType::Or),
+        ]);
+        for (s, tt) in map {
+            let tokens = get_tokens(s);
+            assert_eq!(tokens.len(), 1);
+            assert_tokentype(&tokens[0], tt);
+            assert_literal(&tokens[0], s);
+        }
+
+        //logical operators
+        let s = "! == != <= >= < >";
+        let expected_output = [TokenType::Bang,
+            TokenType::EqualEqual,
+            TokenType::BangEqual,
+            TokenType::LessEqual,
+            TokenType::GreatEqual,
+            TokenType::Less,
+            TokenType::Greater,];
+        let tokens = get_tokens(s);
+        assert_eq!(tokens.len(), expected_output.len());
+        for i in 0..tokens.len() {
+            assert_tokentype(&tokens[i], expected_output[i]);
+        }
+
+        //assign operators
+        let s = "= -= += /= *= %=";
+        let expected_output = [TokenType::Equal,
+            TokenType::MinusEqual,
+            TokenType::PlusEqual,
+            TokenType::SlashEqual,
+            TokenType::MulEqual,
+            TokenType::ModEqual];
+        let tokens = get_tokens(s);
+        assert_eq!(tokens.len(), expected_output.len());
+        for i in 0..tokens.len() {
+            assert_tokentype(&tokens[i], expected_output[i]);
+        }
+
+        //brackets
+        let s = "[ ] ( ) { }";
+        let expected_output = [TokenType::OpenSquare,
+            TokenType::CloseSquare,
+            TokenType::OpenParen,
+            TokenType::CloseParen,
+            TokenType::OpenCurly,
+            TokenType::CloseCurly];
+        let tokens = get_tokens(s);
+        assert_eq!(tokens.len(), expected_output.len());
+        for i in 0..tokens.len() {
+            assert_tokentype(&tokens[i], expected_output[i]);
+        }
+
+        //strings
+        let cases = [ "this is a string", ""];
+        for s in cases  {
+            let tokens = get_tokens(&format!("\"{}\"", s));
+            assert_eq!(tokens.len(), 1);
+            assert_tokentype(&tokens[0], TokenType::String);
+            assert_literal(&tokens[0], s);
+        }
+
+        //numbers
+        let cases = [ 1.0,  0.0, 1.11 ];
+        for s in cases  {
+            let string = format!("{}", s);
+            let tokens = get_tokens(&string);
+            assert_eq!(tokens.len(), 1);
+            assert_tokentype(&tokens[0], TokenType::Number);
+            assert_literal(&tokens[0], &string);
+        }
+
+        //identifers
+        let cases = [ "variable_name", "a"];
+        for s in cases  {
+            let tokens = get_tokens(s);
+            assert_eq!(tokens.len(), 1);
+            assert_tokentype(&tokens[0], TokenType::Identifer);
+            assert_literal(&tokens[0], s);
+        }
+
+        //others
+        let s = ". , ;";
+        let expected_output = [TokenType::Dot,
+            TokenType::Comma,
+            TokenType::Semicolon,];
+        let tokens = get_tokens(s);
+        assert_eq!(tokens.len(), expected_output.len());
+        for i in 0..tokens.len() {
+            assert_tokentype(&tokens[i], expected_output[i]);
+        }
+
+        //empty file
+        let s = "";
+        let tokens = get_tokens(s);
+        assert_eq!(tokens.len(), 0);
     }
 }

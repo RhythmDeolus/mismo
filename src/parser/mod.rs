@@ -179,7 +179,12 @@ impl Parser {
 
     fn assign(&mut self) -> Possible<dyn Expression> {
         let mut e = self.or()?;
-        while self.match_token(TokenType::Equal) {
+        while self.match_token(TokenType::Equal)
+        || self.match_token(TokenType::PlusEqual) 
+        || self.match_token(TokenType::MinusEqual)
+        || self.match_token(TokenType::MulEqual)
+        || self.match_token(TokenType::SlashEqual)
+        {
             let ptt = self.previous_token_type();
             if e.is_assignable() {
                 e = Box::new(BinaryOp {
@@ -279,6 +284,11 @@ impl Parser {
             TokenType::OpenSquare => BinaryOpType::Index,
             TokenType::Dot => BinaryOpType::Dot,
             TokenType::Equal => BinaryOpType::Assign,
+            TokenType::PlusEqual => BinaryOpType::PlusEqual,
+            TokenType::MinusEqual => BinaryOpType::MinusEqual,
+            TokenType::MulEqual => BinaryOpType::MulEqual,
+            TokenType::SlashEqual => BinaryOpType::DivEqual,
+            TokenType::Mod => BinaryOpType::Mod,
             _ => return None,
         };
         Some(x)
@@ -316,7 +326,10 @@ impl Parser {
 
     fn factor(&mut self) -> Possible<dyn Expression> {
         let mut e = self.unary()?;
-        while self.match_token(TokenType::Mul) || self.match_token(TokenType::Slash) {
+        while self.match_token(TokenType::Mul) 
+        || self.match_token(TokenType::Slash) 
+        || self.match_token(TokenType::Mod)
+        {
             let ptt = self.previous_token_type();
             let a = self.unary();
             e = Box::new(BinaryOp {
@@ -352,7 +365,7 @@ impl Parser {
     }
 
     fn previous_token_type(&self) -> TokenType {
-        self.previous().unwrap().t_type.clone()
+        self.previous().unwrap().t_type
     }
 
     fn index(&mut self) -> Possible<dyn Expression> {
@@ -373,7 +386,7 @@ impl Parser {
     fn dot(&mut self) -> Possible<dyn Expression> {
         let mut e = self.primary()?;
         while self.match_token(TokenType::Dot) {
-            let ptt = self.previous().unwrap().t_type.clone();
+            let ptt = self.previous().unwrap().t_type;
             let a = self.primary();
             e = Box::new(BinaryOp {
                 left: e,
@@ -577,7 +590,7 @@ impl Parser {
         Ok(FunctionDeclaration {
             name,
             parameters_list: pl,
-            body: block,
+            body: Box::new(block),
         })
     }
 
@@ -588,7 +601,7 @@ impl Parser {
         let expression = self.expression()?;
         Ok(ReturnStatement { expression })
     }
-    pub fn statement(&mut self) -> Possible<dyn Statement> {
+    fn statement(&mut self) -> Possible<dyn Statement> {
         let v:Box<dyn Statement> = if self.match_token(TokenType::Var) {
             let v = self.var_declaration()?;
             self.consume(
@@ -681,3 +694,210 @@ impl Parser {
         statements
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::tokenizer::Tokenizer;
+
+    use super::*;
+    fn check_for(stmt: Box<dyn Statement>, s: &str) {
+        let contents = s.chars().collect();
+        let mut t = Tokenizer::create(&contents);
+        let mut tokens = vec![];
+        let map: HashMap<_, _> = HashMap::from([
+            ("if", TokenType::If),
+            ("else", TokenType::Else),
+            ("var", TokenType::Var),
+            ("return", TokenType::Return),
+            ("func", TokenType::Function),
+            ("while", TokenType::While),
+            ("for", TokenType::For),
+            ("print", TokenType::Print),
+            ("true", TokenType::True),
+            ("false", TokenType::False),
+            ("none", TokenType::None),
+            ("and", TokenType::And),
+            ("or", TokenType::Or),
+        ]);
+        while let Some(x) = t.next_token(&map) {
+            tokens.push(x);
+        }
+        println!("tokens: {:?}", tokens);
+
+        let mut parser = Parser::create(tokens);
+        let statements = parser.parse_statements();
+        assert_eq!(statements.len(), 1);
+        assert_eq!(format!("{:?}",stmt), format!("{:?}", statements[0]));
+    }
+    #[test]
+    fn test_blocks()  {
+        let s = "{}";
+        let o = Box::new(Block {
+            statements: vec![]
+        });
+        check_for(o, s);
+    }
+
+    #[test]
+    fn test_binary_exprs() {
+        let operator_n_types = [
+        ("=", BinaryOpType::Assign),
+        ("+=", BinaryOpType::PlusEqual),
+        ("-=", BinaryOpType::MinusEqual),
+        ("*=", BinaryOpType::MulEqual),
+        ("/=", BinaryOpType::DivEqual),
+        ("+", BinaryOpType::Add),
+        ("-", BinaryOpType::Sub),
+        ("/", BinaryOpType::Div),
+        ("*", BinaryOpType::Mul),
+        ("or", BinaryOpType::Or),
+        ("and", BinaryOpType::And),
+        (">", BinaryOpType::Greater),
+        ("<", BinaryOpType::Less),
+        (">=", BinaryOpType::GreatEqual),
+        ("<=", BinaryOpType::LessEqual),
+        ("==", BinaryOpType::EqualEqual),
+        ("!=", BinaryOpType::NotEqual),
+        ];
+        for (x, y) in operator_n_types {
+            let bo = BinaryOp {
+                left: Box::new(Identifier {
+                                    name: "a".to_string()
+                                }),
+                right: Box::new(Identifier {
+                                    name: "b".to_string()
+                                }),
+                op_type: y
+            };
+
+            let stmt = wrap_expression(Box::new(bo));
+
+            let st = format!("a {} b;" , x);
+            check_for(stmt, &st);
+        }
+        let operator_n_types = [
+        ("a[b];", BinaryOpType::Index),
+        ("a.b;", BinaryOpType::Dot),
+        ];
+        for (x, y) in operator_n_types {
+            let bo = BinaryOp {
+                left: Box::new(Identifier {
+                                    name: "a".to_string()
+                                }),
+                right: Box::new(Identifier {
+                                    name: "b".to_string()
+                                }),
+                op_type: y
+            };
+
+            let stmt = wrap_expression(Box::new(bo));
+
+            check_for(stmt, x);
+        }
+
+    }
+
+    fn wrap_expression(expr: Box<dyn Expression>) -> Box<dyn Statement> {
+        Box::new(ExpresssionStatement {
+            expression: expr
+        })
+    }
+
+    #[test]
+    fn test_unary_exprs() {
+        let operator_n_types = [
+        ("!", UnaryOpType::Not),
+        ("-", UnaryOpType::Minus),
+        ];
+        for (x, y) in operator_n_types {
+            let uo = UnaryOp {
+                operand: Box::new(Identifier {
+                                    name: "a".to_string()
+                                }),
+                op_type: y
+            };
+
+            let stmt = wrap_expression(Box::new(uo));
+
+            let st = format!("{}a;" , x);
+            check_for(stmt, &st);
+        }
+    }
+
+    #[test]
+    fn test_identifer_exprs() {
+        let s = "variable_name;";
+        let ident = Box::new(Identifier {
+            name: "variable_name".to_string()
+        });
+        let stmt = wrap_expression(ident);
+        check_for(stmt, s);
+    }
+
+
+    #[test]
+    fn test_calls_exprs() {
+        let s = "test_call();";
+        let ident = Box::new(Call {
+            left: "test_call".to_string(),
+            arguments: ExpressionList {
+                expressions: vec![]
+            }
+        });
+        let stmt = wrap_expression(ident);
+        check_for(stmt, s);
+    }
+
+    #[test]
+    fn test_literal_exprs() {
+        let s_to_stmt: Vec<(_, Box<dyn Expression>)> = vec![
+        ("\"hello world\";", Box::new(StringLiteral { val: "hello world".to_string() })),
+        ("1.0;", Box::new(NumberLiteral { val: "1.0".to_string() })),
+        ("[1, 2];", Box::new(ArrayLiteral {
+                expressions: ExpressionList {
+                    expressions: vec![
+                    Box::new(NumberLiteral{val:"1".to_string(),}),
+                    Box::new(NumberLiteral{val:"2".to_string(),})
+                    ]
+                }
+            })),
+        ("false;", Box::new(False {})),
+        ("true;", Box::new(True {})),
+        ("none;", Box::new(NoneVal {})),
+        ];
+
+        for (x, y) in s_to_stmt {
+            let y2 = wrap_expression(y);
+            check_for(y2, x);
+        }
+    }
+
+    #[test]
+    fn test_func_decls() {
+        //TODO
+    }
+    
+    #[test]
+    fn test_if_stmts() {
+        //TODO
+    }
+    
+    #[test]
+    fn test_return_stmts() {
+        //TODO
+    }
+    
+    #[test]
+    fn test_var_decls() {
+        //TODO
+    }
+    
+    #[test]
+    fn test_while_stmts() {
+        //TODO
+    }
+}
+
+

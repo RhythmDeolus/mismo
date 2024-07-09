@@ -12,7 +12,9 @@ pub mod var_decls;
 pub mod whiles;
 
 pub trait Statement: Debug {
-    fn generate_code(&self, codegen: &mut CodeGen) {
+    fn generate_code(&self, _ : &mut CodeGen) {
         println!("generating code..");
     }
+
+    fn desugar(&self) -> Box<dyn Statement>;
 }

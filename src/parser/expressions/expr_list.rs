@@ -12,4 +12,19 @@ impl ExpressionList {
         }
         true
     }
+    pub fn desugar(&self) -> ExpressionList {
+        let expressions: Vec<Box<dyn Expression>> = self.expressions.iter().map(|x| x.desugar()).collect();
+        ExpressionList {
+            expressions
+        }
+    }
+    pub fn my_clone(&self) -> ExpressionList {
+        let mut expressions: Vec<Box<dyn Expression>> = vec![];
+        for x in self.expressions.iter() {
+            expressions.push(x.my_clone());
+        }
+        ExpressionList {
+            expressions
+        }
+    }
 }

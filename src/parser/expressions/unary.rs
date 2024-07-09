@@ -27,9 +27,22 @@ impl Expression for UnaryOp {
             }
         }
     }
+    fn desugar(&self) -> Box<dyn Expression> {
+        let operand = self.operand.desugar();
+        Box::new(UnaryOp {
+            operand,
+            op_type: self.op_type
+        })
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(UnaryOp {
+                    op_type: self.op_type,
+                    operand: self.operand.my_clone()
+                })
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum UnaryOpType {
     Minus,
     Not,

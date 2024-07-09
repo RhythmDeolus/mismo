@@ -1,7 +1,7 @@
 use inkwell::values::AnyValue;
 
 use super::Expression;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Identifier {
     pub name: String,
 }
@@ -18,6 +18,14 @@ impl Expression for Identifier {
     fn get_pointer<'a>(&self, codegen: &'a crate::codegen::CodeGen) ->inkwell::values::PointerValue<'a> {
         let ptr = codegen.get_variable(&self.name);
         ptr.unwrap()
+    }
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(Identifier {
+                    name: self.name.clone()
+                })
     }
 }
 

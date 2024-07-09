@@ -1,17 +1,13 @@
 use ::std::error::Error;
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
-use std::sync::Arc;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
-use inkwell::types::FloatMathType;
-use inkwell::values::{AnyValue, AnyValueEnum, FloatMathValue, FunctionValue, PointerValue};
+use inkwell::values::FunctionValue;
 use inkwell::OptimizationLevel;
 
-use crate::parser::statements::{returns, Statement};
+use crate::parser::statements::Statement;
 
 mod mystd;
 
@@ -33,12 +29,11 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn create(context: &'ctx Context) -> Result<Self, Box<dyn Error>> {
         let module = context.create_module("main");
         let builder = context.create_builder();
-        let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None)?;
+        let execution_engine = module.create_jit_execution_engine(OptimizationLevel::Aggressive)?;
         let fnt = context.void_type().fn_type(&[], false);
         let main = module.add_function("main", fnt, None);
         let bb = context.append_basic_block(main, "entry");
-        let mut fun_stack = vec![];
-        fun_stack.push(main);
+        let fun_stack = vec![main];
         builder.position_at_end(bb);
         Ok(CodeGen {
             context,
@@ -54,7 +49,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn initialize(&self) {
         let void_type = self.context.void_type();
         let fnt = void_type.fn_type(&[], false);
-        let extf = self.module.add_function("printtime", fnt, None);
+        let extf = self.module.add_function("print_time", fnt, None);
         self.execution_engine
             .add_global_mapping(&extf, mystd::print_time as usize);
         let ft = self.context.f64_type();
@@ -94,19 +89,19 @@ impl<'ctx> CodeGen<'ctx> {
         let start = &entry_block.get_first_instruction();
         match start {
             Some(ip) => {
-                self.builder
-                    .position_at(entry_block, ip);
+                self.builder.position_at(entry_block, ip);
             }
             None => {
-                self.builder
-                    .position_at_end(entry_block);
+                self.builder.position_at_end(entry_block);
             }
         }
         let ptr = self
             .builder
             .build_alloca(self.context.f64_type(), name)
             .unwrap();
-        self.builder
+        // TODO setting by default to None
+        let _ = self
+            .builder
             .build_store(ptr, self.context.f64_type().const_zero());
         self.scoped_variables
             .push((self.curr_scope, name.to_string(), ptr));
@@ -118,7 +113,7 @@ impl<'ctx> CodeGen<'ctx> {
         let curr_i = self.curr_scope;
         let mut i = self.scoped_variables.len();
         for (x, _, _) in self.scoped_variables.iter().rev() {
-            if *x == curr_i {
+            if *x <= curr_i {
                 break;
             }
             i -= 1;

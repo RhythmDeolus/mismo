@@ -2,13 +2,22 @@ use inkwell::values::AnyValue;
 
 use super::Expression;
 use super::expr_list::ExpressionList;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StringLiteral {
     pub val: String,
 }
-impl Expression for StringLiteral {}
+impl Expression for StringLiteral {
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(StringLiteral {
+                    val: self.val.clone()
+                })
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NumberLiteral {
     pub val: String,
 }
@@ -20,30 +29,68 @@ impl Expression for NumberLiteral {
 
         codegen.context.f64_type().const_float(f).as_any_value_enum()
     }
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(NumberLiteral {
+                    val: self.val.clone()
+                })
+    }
 }
 
 #[derive(Debug)]
 pub struct ArrayLiteral {
     pub expressions: ExpressionList,
 }
-impl Expression for ArrayLiteral {}
+impl Expression for ArrayLiteral {
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(ArrayLiteral {
+            expressions: self.expressions.desugar()
+        })
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(ArrayLiteral {
+                    expressions: self.expressions.my_clone()
+                })
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct False;
 impl Expression for False {
     fn codegen_expression<'ctx>(&self, codegen: &'ctx crate::codegen::CodeGen) -> inkwell::values::AnyValueEnum<'ctx>{
         codegen.context.bool_type().const_zero().as_any_value_enum()
     }
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(False{})
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct True;
 impl Expression for True {
     fn codegen_expression<'ctx>(&self, codegen: &'ctx crate::codegen::CodeGen) -> inkwell::values::AnyValueEnum<'ctx>{
         codegen.context.bool_type().const_all_ones().as_any_value_enum()
     }
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(True{})
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NoneVal;
-impl Expression for NoneVal {}
+impl Expression for NoneVal {
+    fn desugar(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
+    }
+    fn my_clone(&self) -> Box<dyn Expression> {
+        Box::new(NoneVal{})
+    }
+}
