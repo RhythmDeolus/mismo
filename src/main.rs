@@ -1,9 +1,15 @@
 use mismo::compiler::Compiler;
+use repl::run_repl;
 use std::env::{args, set_var};
 use std::fs;
+mod repl;
 fn main() {
     let mut arg = args();
     set_var("RUST_BACKTRACE", "1");
+    if arg.len() == 1 {
+        run_repl();
+        return;
+    }
     let file_name = arg.nth(1).expect("No argument provided");
     let contents = fs::read_to_string(file_name);
     match contents {
@@ -12,7 +18,9 @@ fn main() {
         }
         Ok(contents) => {
             let compiler = Compiler::create();
-            compiler.run(contents.chars().collect());
+            let context = Compiler::get_context();
+            let mut codegen = Compiler::get_codegen(&context);
+            compiler.run(contents.chars().collect(), &mut codegen);
         }
     }
 }

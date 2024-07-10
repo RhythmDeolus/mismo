@@ -1,8 +1,8 @@
 use std::{borrow::Borrow, collections::HashMap};
 
 use inkwell::{
-    passes,
-    targets::{CodeModel, Target, TargetMachine}
+     passes, targets::{CodeModel, Target, TargetMachine},
+    context::Context
 };
 
 use crate::{
@@ -41,6 +41,15 @@ impl Compiler {
             keywords_to_tokentype: map,
             tokentype_to_keyword: map2,
         }
+    }
+
+    pub fn get_context() -> Context {
+        CodeGen::get_context()
+    }
+    pub fn get_codegen(context: &Context) -> CodeGen {
+        let codegen = CodeGen::create(context).unwrap();
+        codegen.initialize();
+        codegen
     }
 
     fn print_nth_line(contents: &[char], n: usize) {
@@ -83,8 +92,8 @@ impl Compiler {
         }
     }
 
-
-    pub fn run(&self, contents: Vec<char>) {
+    pub fn run(&self, contents: Vec<char>, codegen: &mut CodeGen) {
+        // tokenization
         let mut tokenizer = Tokenizer::create(&contents);
         let mut tokens = vec![];
 
@@ -93,6 +102,7 @@ impl Compiler {
             tokens.push(x);
         }
 
+        // parsing
         let mut parser = Parser::create(tokens);
 
         let statements = parser.parse_statements();
@@ -105,7 +115,7 @@ impl Compiler {
             }
         }
 
-        // Desugaring
+        // de-sugaring
         let mut desugared_statements = vec![];
 
         for stmt in statements.iter() {
@@ -114,9 +124,7 @@ impl Compiler {
         Compiler::print_statements(&desugared_statements);
 
 
-        let context = CodeGen::get_context();
-        let mut codegen = CodeGen::create(&context).unwrap();
-        codegen.initialize();
+        // code generation
         for stmt in desugared_statements {
             codegen.codegen(stmt.borrow());
         }
@@ -133,6 +141,8 @@ impl Compiler {
             println!("{}", codegen.module.to_string());
             panic!("Can't Compile!");
         }
+
+        // optimization passes
         let tt = TargetMachine::get_default_triple();
         let t = Target::from_triple(&tt).unwrap();
         let tm = t.create_target_machine(
@@ -148,10 +158,22 @@ impl Compiler {
         println!("{:?}", result);
 
         println!("{}", codegen.module.to_string());
+        println!("{}", codegen.main);
 
+        // jit compilation & execution
         unsafe {
-            codegen.execution_engine.run_function_as_main(codegen.main, &[])
+            let _ = codegen.execution_engine.add_module(&codegen.module);
+            codegen.execution_engine.run_function(codegen.main, &[]);
+            let _ = codegen.execution_engine.remove_module(&codegen.module);
         };
+        
+        // resetting main function
+        for x in codegen.main.get_basic_block_iter() {
+            let _ = x.remove_from_function();
+        }
+
+        let bb = codegen.context.append_basic_block(codegen.main, "entry");
+        codegen.builder.position_at_end(bb);
 
     }
 }

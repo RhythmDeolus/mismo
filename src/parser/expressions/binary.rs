@@ -68,7 +68,15 @@ impl Expression for BinaryOp {
             let lhs = self.left.get_pointer(codegen);
             let rhs = self.right.codegen_expression(codegen);
             let rhs = rhs.into_float_value();
-            let _ = codegen.builder.build_store(lhs, rhs);
+            match lhs {
+                crate::codegen::VariableReference::Local(lhs) => {
+                    let _ = codegen.builder.build_store(lhs, rhs);
+                }
+                crate::codegen::VariableReference::Global(lhs) => {
+                    let ptr = lhs.as_pointer_value();
+                    let _ = codegen.builder.build_store(ptr, rhs);
+                }
+            }
             return rhs.as_any_value_enum();
         }
         let lhs = self.left.codegen_expression(codegen);

@@ -13,7 +13,14 @@ impl Statement for VarDeclaration {
             let val = e.codegen_expression(codegen);
             let ptr = codegen.get_variable(&self.identifier).unwrap();
             // TODO: Error handling
-            let _ = codegen.builder.build_store(ptr, val.into_float_value());
+            match ptr {
+                crate::codegen::VariableReference::Local(lhs) => {
+                    let _ = codegen.builder.build_store(lhs, val.into_float_value());
+                }
+                crate::codegen::VariableReference::Global(lhs) => {
+                    lhs.set_initializer(&val.into_float_value());
+                }
+            }
         } else {
             codegen.allocate_variable(&self.identifier);
         }

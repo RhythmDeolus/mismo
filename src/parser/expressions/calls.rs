@@ -65,8 +65,8 @@ impl Expression for Call {
                 args.push(v.into());
             }
             let retv = codegen.builder.build_call(val, &args, "retv");
-            let _ = retv.unwrap().as_any_value_enum();
-            // return value
+            let retv = retv.unwrap().as_any_value_enum();
+            return retv.as_any_value_enum();
         }
         //TODO
         codegen.context.f64_type().const_zero().as_any_value_enum()

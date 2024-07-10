@@ -4,7 +4,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
-use inkwell::values::FunctionValue;
+use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
 use inkwell::OptimizationLevel;
 
 use crate::parser::statements::Statement;
@@ -20,6 +20,11 @@ pub struct CodeGen<'ctx> {
     pub scoped_variables: Vec<(u16, String, inkwell::values::PointerValue<'ctx>)>,
     pub fun_stack: Vec<FunctionValue<'ctx>>,
     pub curr_scope: u16,
+}
+
+pub enum VariableReference<'a> {
+    Local(PointerValue<'a>),
+    Global(GlobalValue<'a>),
 }
 
 impl<'ctx> CodeGen<'ctx> {
@@ -63,13 +68,13 @@ impl<'ctx> CodeGen<'ctx> {
         *self.fun_stack.last().unwrap()
     }
 
-    pub fn get_variable(&self, name: &str) -> Option<inkwell::values::PointerValue> {
+    pub fn get_variable(&self, name: &str) -> Option<VariableReference> {
         for (_, x, y) in self.scoped_variables.iter().rev() {
             if x == name {
-                return Some(*y);
+                return Some(VariableReference::Local(*y));
             }
         }
-        None
+        Some(VariableReference::Global(self.module.get_global(name)?))
     }
 
     pub fn increase_scope(&mut self) {
@@ -77,6 +82,10 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub fn allocate_variable(&mut self, name: &str) {
+        if self.curr_scope == 0 {
+            self.module.add_global(self.context.f64_type(), None, name);
+            return;
+        }
         let curr_block = self.builder.get_insert_block().unwrap();
         let entry_block = self
             .builder
