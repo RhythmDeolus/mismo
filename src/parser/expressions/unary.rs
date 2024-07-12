@@ -1,12 +1,14 @@
 
 use inkwell::values::AnyValue;
 
-use super::Expression;
+use super::{AnyExpressionEnum, Expression};
 #[derive(Debug)]
 pub struct UnaryOp {
-    pub operand: Box<dyn Expression>,
+    pub operand: Box<AnyExpressionEnum>,
     pub op_type: UnaryOpType,
 }
+
+
 impl Expression for UnaryOp {
     fn codegen_expression<'ctx>(&self, codegen: &'ctx crate::codegen::CodeGen) -> inkwell::values::AnyValueEnum<'ctx> {
         let v = self.operand.codegen_expression(codegen);
@@ -27,18 +29,21 @@ impl Expression for UnaryOp {
             }
         }
     }
-    fn desugar(&self) -> Box<dyn Expression> {
-        let operand = self.operand.desugar();
-        Box::new(UnaryOp {
+    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+        AnyExpressionEnum::Unary(self)
+    }
+    fn desugar(self) -> AnyExpressionEnum {
+        let operand = Box::new(self.operand.desugar());
+        UnaryOp {
             operand,
             op_type: self.op_type
-        })
+        }.as_any_expression_enum()
     }
-    fn my_clone(&self) -> Box<dyn Expression> {
-        Box::new(UnaryOp {
-                    op_type: self.op_type,
-                    operand: self.operand.my_clone()
-                })
+    fn my_clone(&self) -> AnyExpressionEnum {
+        UnaryOp {
+            op_type: self.op_type,
+            operand: self.operand.my_clone().boxed()
+        }.as_any_expression_enum()
     }
 }
 

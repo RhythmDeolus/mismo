@@ -1,6 +1,6 @@
 use inkwell::values::AnyValue;
 
-use super::Expression;
+use super::{AnyExpressionEnum, Expression};
 #[derive(Debug, Clone, Copy)]
 pub enum BinaryOpType{
     Assign,
@@ -27,8 +27,8 @@ pub enum BinaryOpType{
 
 #[derive(Debug)]
 pub struct BinaryOp {
-    pub left: Box<dyn Expression>,
-    pub right: Box<dyn Expression>,
+    pub left: Box<AnyExpressionEnum>,
+    pub right: Box<AnyExpressionEnum>,
     pub op_type: BinaryOpType,
 }
 impl BinaryOp {
@@ -51,12 +51,16 @@ impl Expression for BinaryOp {
         }
     }
 
-    fn my_clone(&self) -> Box<dyn Expression> { 
-        Box::new(BinaryOp {
-                    left: self.left.my_clone(),
-                    right: self.right.my_clone(),
-                    op_type: self.op_type
-                })
+    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+        AnyExpressionEnum::Binary(self)
+    }
+
+    fn my_clone(&self) -> AnyExpressionEnum {
+        BinaryOp {
+            left: self.left.my_clone().boxed(),
+            right: self.right.my_clone().boxed(),
+            op_type: self.op_type
+        }.as_any_expression_enum()
     }
 
     fn codegen_expression<'a>(
@@ -195,29 +199,29 @@ impl Expression for BinaryOp {
         }
     }
 
-    fn desugar(&self) -> Box<dyn Expression> {
-        let left = self.left.desugar();
-        let right = self.right.desugar();
+    fn desugar(self) -> AnyExpressionEnum {
+        let left = Box::new(self.left.desugar());
+        let right = Box::new(self.right.desugar());
         match self.op_type {
             BinaryOpType::PlusEqual
             | BinaryOpType::MinusEqual
             | BinaryOpType::MulEqual
             | BinaryOpType::DivEqual => {
-                Box::new(BinaryOp  {
-                    left: left.my_clone(),
+                BinaryOp  {
+                    left: Box::new(left.my_clone()),
                     op_type: BinaryOpType::Assign,
                     right: Box::new(BinaryOp {
-                        left,
-                        right,
-                        op_type: BinaryOp::map_assign_op_to(self.op_type)
-                    })
-                })
+                                            left,
+                                            right,
+                                            op_type: BinaryOp::map_assign_op_to(self.op_type)
+                                        }.as_any_expression_enum())
+                }.as_any_expression_enum()
             }
-            _ => Box::new(BinaryOp {
+            _ => BinaryOp {
                 left,
                 right,
                 op_type: self.op_type
-            })
+            }.as_any_expression_enum()
         }
     }
 }

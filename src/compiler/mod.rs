@@ -6,7 +6,7 @@ use inkwell::{
 };
 
 use crate::{
-    codegen::CodeGen, parser::{statements::Statement, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
+    codegen::CodeGen, parser::{statements::{AnyStatementEnum, Statement}, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
 };
 
 #[allow(dead_code)] //TODO
@@ -76,7 +76,7 @@ impl Compiler {
         }
     }
 
-    fn print_statements(statements: &[Box<dyn Statement>]) {
+    fn print_statements(statements: &[AnyStatementEnum]) {
         println!("\n========= STATEMENTS =========================\n");
         for (i, stmt) in statements.iter().enumerate() {
             println!("{}: {:#?}\n", i, stmt);
@@ -118,7 +118,7 @@ impl Compiler {
         // de-sugaring
         let mut desugared_statements = vec![];
 
-        for stmt in statements.iter() {
+        for stmt in statements {
             desugared_statements.push(stmt.desugar())
         }
         Compiler::print_statements(&desugared_statements);
@@ -126,7 +126,7 @@ impl Compiler {
 
         // code generation
         for stmt in desugared_statements {
-            codegen.codegen(stmt.borrow());
+            codegen.codegen(stmt);
         }
         codegen.builder.position_at_end(codegen.main.get_last_basic_block().unwrap());
         let _ = codegen.builder.build_return(None);

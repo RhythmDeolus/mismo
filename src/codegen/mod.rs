@@ -7,7 +7,7 @@ use inkwell::module::Module;
 use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
 use inkwell::OptimizationLevel;
 
-use crate::parser::statements::Statement;
+use crate::parser::statements::{AnyStatementEnum, Statement};
 
 mod mystd;
 
@@ -133,7 +133,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    pub fn codegen(&mut self, stmt: &dyn Statement) {
+    pub fn codegen(&mut self, stmt: AnyStatementEnum) {
         stmt.generate_code(self);
     }
 }

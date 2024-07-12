@@ -1,10 +1,12 @@
+use crate::parser::expressions::AnyExpressionEnum;
+
 use super::super::expressions::Expression;
-use super::Statement;
+use super::{AnyStatementEnum, Statement};
 #[derive(Debug)]
 pub struct IfStatement {
-    pub expression: Box<dyn Expression>,
-    pub block: Box<dyn Statement>,
-    pub else_block: Option<Box<dyn Statement>>,
+    pub expression: Box<AnyExpressionEnum>,
+    pub block: Box<AnyStatementEnum>,
+    pub else_block: Option<Box<AnyStatementEnum>>,
 }
 
 impl Statement for IfStatement {
@@ -45,16 +47,17 @@ impl Statement for IfStatement {
         codegen.builder.position_at_end(return_block);
     }
 
-    fn desugar(&self) -> Box<dyn Statement> {
-        let expression = self.expression.desugar();
-        let block = self.block.desugar();
-        let else_block = self.else_block.as_ref().map(|x| x.desugar());
-        Box::new(
-            IfStatement {
-                expression,
-                block,
-                else_block
-            }
-        )
+    fn desugar(self) -> AnyStatementEnum {
+        let expression = self.expression.desugar().boxed();
+        let block = self.block.desugar().boxed();
+        let else_block = self.else_block.map(|x| x.desugar().boxed());
+        IfStatement {
+            expression,
+            block,
+            else_block
+        }.as_any_statement_enum()
+    }
+    fn as_any_statement_enum(self) -> AnyStatementEnum {
+        AnyStatementEnum::If(self)
     }
 }

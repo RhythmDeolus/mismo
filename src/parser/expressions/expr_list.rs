@@ -1,7 +1,7 @@
-use super::Expression;
+use super::{AnyExpressionEnum, Expression};
 #[derive(Debug)]
-pub struct ExpressionList {
-    pub expressions: Vec<Box<dyn Expression>>,
+pub struct ExpressionList{
+    pub expressions: Vec<Box<AnyExpressionEnum>>,
 }
 impl ExpressionList {
     pub fn is_assignable(&self) -> bool {
@@ -12,16 +12,19 @@ impl ExpressionList {
         }
         true
     }
-    pub fn desugar(&self) -> ExpressionList {
-        let expressions: Vec<Box<dyn Expression>> = self.expressions.iter().map(|x| x.desugar()).collect();
+    pub fn desugar(self) -> ExpressionList {
+        let expressions: Vec<Box<AnyExpressionEnum>> = self.expressions.into_iter().map(|x| Box::new(x.desugar())).collect();
         ExpressionList {
             expressions
         }
     }
+    pub fn as_any_expression(self) -> AnyExpressionEnum {
+        AnyExpressionEnum::ExpressionList(self)
+    }
     pub fn my_clone(&self) -> ExpressionList {
-        let mut expressions: Vec<Box<dyn Expression>> = vec![];
+        let mut expressions: Vec<Box<AnyExpressionEnum>> = vec![];
         for x in self.expressions.iter() {
-            expressions.push(x.my_clone());
+            expressions.push(x.my_clone().boxed());
         }
         ExpressionList {
             expressions

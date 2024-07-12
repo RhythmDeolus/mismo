@@ -1,9 +1,11 @@
-use super::Statement;
+use crate::parser::expressions::AnyExpressionEnum;
+
+use super::{AnyStatementEnum, Statement};
 use super::super::expressions::Expression;
 #[derive(Debug)]
 pub struct VarDeclaration {
     pub identifier: String,
-    pub expression: Option<Box<dyn Expression>>,
+    pub expression: Option<Box<AnyExpressionEnum>>,
 }
 
 impl Statement for VarDeclaration {
@@ -25,10 +27,13 @@ impl Statement for VarDeclaration {
             codegen.allocate_variable(&self.identifier);
         }
     }
-    fn desugar(&self) -> Box<dyn Statement> {
-        Box::new(VarDeclaration {
+    fn desugar(self) -> AnyStatementEnum {
+        VarDeclaration {
             identifier: self.identifier.clone(),
-            expression: self.expression.as_ref().map(|x| x.desugar())
-        })
+            expression: self.expression.map(|x| x.desugar().boxed())
+        }.as_any_statement_enum()
+    }
+    fn as_any_statement_enum(self) -> super::AnyStatementEnum {
+        super::AnyStatementEnum::VarDeclaration(self)
     }
 }

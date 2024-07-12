@@ -1,10 +1,12 @@
-use super::Statement;
+use crate::parser::expressions::AnyExpressionEnum;
+
+use super::{AnyStatementEnum, Statement};
 use super::super::expressions::Expression;
 
 #[derive(Debug)]
 pub struct WhileStatement {
-    pub expression: Box<dyn Expression>,
-    pub statement: Box<dyn Statement>,
+    pub expression: Box<AnyExpressionEnum>,
+    pub statement: Box<AnyStatementEnum>,
 }
 impl Statement for WhileStatement {
     fn generate_code(&self, codegen: &mut crate::codegen::CodeGen) {
@@ -25,10 +27,13 @@ impl Statement for WhileStatement {
         codegen.builder.build_unconditional_branch(condition_block).unwrap();
         codegen.decrease_scope();
     }
-    fn desugar(&self) -> Box<dyn Statement> {
-        Box::new(WhileStatement{
-            expression: self.expression.desugar(),
-            statement: self.statement.desugar()
-        })
+    fn desugar(self) -> AnyStatementEnum {
+        WhileStatement{
+            expression: self.expression.desugar().boxed(),
+            statement: self.statement.desugar().boxed()
+        }.as_any_statement_enum()
+    }
+    fn as_any_statement_enum(self) -> AnyStatementEnum {
+        AnyStatementEnum::While(self)
     }
 }

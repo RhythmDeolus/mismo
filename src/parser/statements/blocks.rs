@@ -1,7 +1,7 @@
-use super::Statement;
+use super::{AnyStatementEnum, Statement};
 #[derive(Debug)]
 pub struct Block {
-    pub statements: Vec<Box<dyn Statement>>,
+    pub statements: Vec<Box<AnyStatementEnum>>,
 }
 impl Statement for Block {
     fn generate_code(&self, codegen: &mut crate::codegen::CodeGen) {
@@ -11,13 +11,16 @@ impl Statement for Block {
         }
         codegen.decrease_scope();
     }
-    fn desugar(&self) -> Box<dyn Statement> {
+    fn desugar(self) -> AnyStatementEnum {
         let mut new_stmts = vec![];
-        for stmt in self.statements.iter() {
-            new_stmts.push(stmt.desugar());
+        for stmt in self.statements {
+            new_stmts.push(stmt.desugar().boxed());
         }
-        Box::new(Block {
+        Block {
             statements: new_stmts
-        })
+        }.as_any_statement_enum()
+    }
+    fn as_any_statement_enum(self) -> AnyStatementEnum {
+        AnyStatementEnum::Block(self)
     }
 }

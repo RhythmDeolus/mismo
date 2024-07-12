@@ -1,7 +1,9 @@
 use inkwell::values::AnyValue;
 
+use crate::codegen;
+
 use super::expr_list::ExpressionList;
-use super::Expression;
+use super::{AnyExpressionEnum, Expression};
 #[derive(Debug, Clone, Copy)]
 pub enum InbuiltCallTypes {
     Print,
@@ -14,6 +16,9 @@ pub struct InbuiltCall {
     pub arguments: ExpressionList,
 }
 impl Expression for InbuiltCall {
+    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+        AnyExpressionEnum::InbuiltCall(self)
+    }
     fn codegen_expression<'a>(&self, codegen: &'a crate::codegen::CodeGen) -> inkwell::values::AnyValueEnum<'a> {
         match self.c_type {
             InbuiltCallTypes::Print => {
@@ -33,17 +38,17 @@ impl Expression for InbuiltCall {
             }
         }codegen.context.f64_type().const_zero().as_any_value_enum()
     }
-    fn desugar(&self) -> Box<dyn Expression> {
-        Box::new(InbuiltCall{
+    fn desugar(self) -> AnyExpressionEnum {
+        InbuiltCall{
             arguments: self.arguments.desugar(),
             c_type: self.c_type
-        })
+        }.as_any_expression_enum()
     }
-    fn my_clone(&self) -> Box<dyn Expression> {
-        Box::new(InbuiltCall {
-                    c_type: self.c_type,
-                    arguments: self.arguments.my_clone()
-                })
+    fn my_clone(&self) -> AnyExpressionEnum {
+        InbuiltCall {
+            c_type: self.c_type,
+            arguments: self.arguments.my_clone()
+        }.as_any_expression_enum()
     }
 }
 #[derive(Debug)]
@@ -52,6 +57,9 @@ pub struct Call {
     pub arguments: ExpressionList,
 }
 impl Expression for Call {
+    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+        AnyExpressionEnum::Call(self)
+    }
     fn codegen_expression<'ctx>(
         &self,
         codegen: &'ctx  crate::codegen::CodeGen,
@@ -71,16 +79,16 @@ impl Expression for Call {
         //TODO
         codegen.context.f64_type().const_zero().as_any_value_enum()
     }
-    fn desugar(&self) -> Box<dyn Expression> {
-        Box::new(Call {
+    fn desugar(self) -> AnyExpressionEnum{
+        Call {
             left: self.left.clone(),
             arguments: self.arguments.desugar()
-        })
+        }.as_any_expression_enum()
     }
-    fn my_clone(&self) -> Box<dyn Expression> {
-        Box::new(Call {
-                    left: self.left.clone(),
-                    arguments: self.arguments.my_clone()
-                })
+    fn my_clone(&self) -> AnyExpressionEnum {
+        Call {
+            left: self.left.clone(),
+            arguments: self.arguments.my_clone()
+        }.as_any_expression_enum()
     }
 }

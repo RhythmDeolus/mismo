@@ -45,7 +45,12 @@ use expressions::{
     expr_list::ExpressionList
 };
 
-type Possible<T> = Result<Box<T>, CompilerError>;
+use self::expressions::AnyExpressionEnum;
+use self::statements::AnyStatementEnum;
+
+// type Possible<T> = Result<Box<T>, CompilerError>;
+type PossibleStatement = Result<AnyStatementEnum, CompilerError>;
+type PossibleExpression = Result<AnyExpressionEnum, CompilerError>;
 
 #[derive(Debug, Clone)]
 pub struct CompilerError {
@@ -157,27 +162,27 @@ impl Parser {
         Some(&self.tokens[self.curr_token - 1])
     }
 
-    fn var_declaration(&mut self) -> Result<impl Statement, CompilerError> {
+    fn var_declaration(&mut self) -> PossibleStatement {
         self.consume(TokenType::Identifer, "Expected an identifer")?;
         let i = self.previous_literal();
-        let mut e: Option<Box<dyn Expression>> = None;
+        let mut e = None;
 
         if self.match_token(TokenType::Equal) {
-            e = Some(self.or()?);
+            e = Some(Box::new(self.or()?));
         }
 
 
         Ok(VarDeclaration {
             identifier: i,
             expression: e,
-        })
+        }.as_any_statement_enum())
     }
 
-    fn expression(&mut self) -> Possible<dyn Expression> {
+    fn expression(&mut self) -> PossibleExpression {
         self.assign()
     }
 
-    fn assign(&mut self) -> Possible<dyn Expression> {
+    fn assign(&mut self) -> PossibleExpression {
         let mut e = self.or()?;
         while self.match_token(TokenType::Equal)
         || self.match_token(TokenType::PlusEqual) 
@@ -187,11 +192,11 @@ impl Parser {
         {
             let ptt = self.previous_token_type();
             if e.is_assignable() {
-                e = Box::new(BinaryOp {
-                    left: e,
-                    right: self.or()?,
+                e = BinaryOp {
+                    left: Box::new(e),
+                    right: Box::new(self.or()?),
                     op_type: Parser::map_to_boptype(ptt).unwrap(),
-                })
+                }.as_any_expression_enum();
             } else {
                 self.error("Can't assign.")?
             }
@@ -220,30 +225,30 @@ impl Parser {
     //     e
     // }
     //
-    fn or(&mut self) -> Possible<dyn Expression> {
+    fn or(&mut self) -> PossibleExpression {
         let mut e = self.and()?;
         while self.match_token(TokenType::Or) {
             let ptt = self.previous_token_type();
             let a = self.and();
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum();
         }
         Ok(e)
     }
 
-    fn and(&mut self) -> Possible<dyn Expression> {
+    fn and(&mut self) -> PossibleExpression {
         let mut e = self.equality()?;
         while self.match_token(TokenType::And) {
             let ptt = self.previous_token_type();
             let a = self.equality();
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum();
         }
         Ok(e)
     }
@@ -294,37 +299,37 @@ impl Parser {
         Some(x)
     }
 
-    fn equality(&mut self) -> Possible<dyn Expression> {
+    fn equality(&mut self) -> PossibleExpression {
         let mut e = self.term()?;
         while self._match_equality_token() {
             let ptt = self.previous_token_type();
             let a = self.term();
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum();
         }
         Ok(e)
     }
 
     // + or -
-    fn term(&mut self) -> Possible<dyn Expression> {
+    fn term(&mut self) -> PossibleExpression {
         let mut e = self.factor()?;
         while self.match_token(TokenType::Plus) || self.match_token(TokenType::Minus) {
             let ptt = self.previous_token_type();
             let a = self.factor();
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum()
         }
 
         Ok(e)
     }
 
-    fn factor(&mut self) -> Possible<dyn Expression> {
+    fn factor(&mut self) -> PossibleExpression {
         let mut e = self.unary()?;
         while self.match_token(TokenType::Mul) 
         || self.match_token(TokenType::Slash) 
@@ -332,11 +337,11 @@ impl Parser {
         {
             let ptt = self.previous_token_type();
             let a = self.unary();
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum();
         }
 
         Ok(e)
@@ -351,13 +356,13 @@ impl Parser {
         Some(x)
     }
 
-    fn unary(&mut self) -> Possible<dyn Expression> {
+    fn unary(&mut self) -> PossibleExpression {
         if self.match_token(TokenType::Minus) || self.match_token(TokenType::Bang) {
             let ptt = self.previous_token_type();
-            Ok(Box::new(UnaryOp {
-                operand: self.unary()?,
+            Ok(UnaryOp {
+                operand: Box::new(self.unary()?),
                 op_type: Parser::map_to_uoptype(ptt).unwrap(),
-            }))
+            }.as_any_expression_enum())
         } else {
             self.index()
         }
@@ -368,31 +373,31 @@ impl Parser {
         self.previous().unwrap().t_type
     }
 
-    fn index(&mut self) -> Possible<dyn Expression> {
+    fn index(&mut self) -> PossibleExpression {
         let mut e = self.dot()?;
         while self.match_token(TokenType::OpenSquare) {
             let ptt = self.previous_token_type();
             let a = self.term();
             self.consume(TokenType::CloseSquare, "Expected a ']'")?;
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum();
         }
         Ok(e)
     }
 
-    fn dot(&mut self) -> Possible<dyn Expression> {
+    fn dot(&mut self) -> PossibleExpression {
         let mut e = self.primary()?;
         while self.match_token(TokenType::Dot) {
             let ptt = self.previous().unwrap().t_type;
             let a = self.primary();
-            e = Box::new(BinaryOp {
-                left: e,
-                right: a?,
+            e = BinaryOp {
+                left: Box::new(e),
+                right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            })
+            }.as_any_expression_enum()
         }
 
         Ok(e)
@@ -415,20 +420,20 @@ impl Parser {
         }
     }
 
-    fn primary(&mut self) -> Possible<dyn Expression> {
-        let v: Box<dyn Expression> = 
+    fn primary(&mut self) -> PossibleExpression {
+        let v = 
         if self.match_token(TokenType::False) {
-            Box::new(False {})
+            AnyExpressionEnum::False(False {})
         } else if self.match_token(TokenType::True) {
-            Box::new(True {})
+            AnyExpressionEnum::True(True {})
         } else if self.match_token(TokenType::None) {
-            Box::new(NoneVal {})
+            AnyExpressionEnum::NoneVal(NoneVal {})
         } else if self.match_token(TokenType::String) {
-            Box::new(StringLiteral {
+            AnyExpressionEnum::StringLiteral(StringLiteral {
                 val: self.previous_literal(),
             })
         } else if self.match_token(TokenType::Number) {
-            Box::new(NumberLiteral {
+            AnyExpressionEnum::NumberLiteral(NumberLiteral {
                 val: self.previous_literal(),
             })
         } else if self.match_token(TokenType::Identifer) {
@@ -441,12 +446,12 @@ impl Parser {
                     el = self.expression_list()?;
                     self.consume(TokenType::CloseParen, "Expected a ')'")?;
                 }
-                Box::new(Call {
+                AnyExpressionEnum::Call(Call {
                     left: identifier.clone(),
                     arguments: el,
                 })
             } else {
-                Box::new(Identifier { name: identifier })
+                AnyExpressionEnum::Identifier(Identifier { name: identifier })
             }
         } else if self.match_token(TokenType::OpenParen) {
             let e1 = self.expression()?;
@@ -455,7 +460,7 @@ impl Parser {
         } else if self.match_token(TokenType::OpenSquare) {
             let el = self.expression_list()?;
             self.consume(TokenType::CloseSquare, "Expected a ']")?;
-            Box::new(ArrayLiteral { expressions: el })
+            AnyExpressionEnum::ArrayLiteral(ArrayLiteral { expressions: el })
         } else {
             return self.error("Expected an expression");
         };
@@ -475,10 +480,10 @@ impl Parser {
             expressions: vec![],
         };
         let mut e = self.expression()?;
-        el.expressions.push(e);
+        el.expressions.push(Box::new(e));
         while self.match_token(TokenType::Comma) {
             e = self.expression()?;
-            el.expressions.push(e);
+            el.expressions.push(Box::new(e));
         }
 
         Ok(el)
@@ -492,54 +497,54 @@ impl Parser {
         Some(x)
     }
 
-    fn print_statement(&mut self) -> Result<impl Statement, CompilerError> {
+    fn print_statement(&mut self) -> PossibleStatement {
         let op = Parser::_map_token_to_inbuiltcall(self.previous_token_type());
         let el = self.expression_list()?;
         Ok(ExpresssionStatement{
             expression: Box::new(InbuiltCall {
-                c_type: op.unwrap(),
-                arguments: el,
-            })
-        })
+                            c_type: op.unwrap(),
+                            arguments: el,
+                        }.as_any_expression_enum())
+        }.as_any_statement_enum())
     }
 
-    fn if_statement(&mut self) -> Result<IfStatement, CompilerError> {
+    fn if_statement(&mut self) -> PossibleStatement {
         self.consume(TokenType::OpenParen, "Expected a '('")?;
         let e = self.expression()?;
         self.consume(TokenType::CloseParen, "Expected a ')'")?;
-        let block: Box<dyn Statement> = self.statement()?;
-        let mut else_block: Option<Box<dyn Statement>> = None;
+        let block = Box::new(self.statement()?);
+        let mut else_block = None;
         if self.match_token(TokenType::Else) {
-            else_block = Some(self.statement()?);
+            else_block = Some(Box::new(self.statement()?));
         }
         Ok(IfStatement {
-            expression: e,
+            expression: Box::new(e),
             block,
             else_block,
-        })
+        }.as_any_statement_enum())
     }
 
     fn block(&mut self) -> Result<Block, CompilerError> {
         let mut statements = vec![];
         while self.inverse_match_token(TokenType::CloseCurly)? {
-            statements.push(self.statement()?);
+            statements.push(Box::new(self.statement()?));
         }
         Ok(Block { statements })
     }
 
-    fn while_statement(&mut self) -> Result<WhileStatement, CompilerError> {
+    fn while_statement(&mut self) -> PossibleStatement {
         self.consume(TokenType::OpenParen, "Expected a '('")?;
         let e = self.expression()?;
         self.consume(TokenType::CloseParen, "Expected a ')'")?;
         Ok(WhileStatement {
-            expression: e,
-            statement: self.statement()?,
-        })
+            expression: Box::new(e),
+            statement: Box::new(self.statement()?),
+        }.as_any_statement_enum())
     }
 
-    fn for_statement(&mut self) -> Result<ForStatement, CompilerError> {
+    fn for_statement(&mut self) -> PossibleStatement {
         self.consume(TokenType::OpenParen, "Expected a '('")?;
-        let mut inital: Option<Box<dyn Statement>> = None;
+        let mut inital: Option<Box<AnyStatementEnum>> = None;
         if self.inverse_match_token(TokenType::Semicolon)? {
             self.consume(TokenType::Var, "Expected a variable declaration")?;
             inital = Some(Box::new(self.var_declaration()?));
@@ -547,7 +552,7 @@ impl Parser {
         }
         let mut check = None;
         if self.inverse_match_token(TokenType::Semicolon)? {
-            check = Some(self.expression()?);
+            check = Some(Box::new(self.expression()?));
             self.consume(TokenType::Semicolon, "Expected a ';'")?;
         }
         let mut change = None;
@@ -555,22 +560,22 @@ impl Parser {
             change = Some(self.expression_list()?);
             self.consume(TokenType::CloseParen, "Expected a ')'")?;
         }
-        let statement = self.statement()?;
+        let statement = Box::new(self.statement()?);
 
         Ok(ForStatement {
             inital,
             check,
             change,
             statement,
-        })
+        }.as_any_statement_enum())
     }
 
-    fn function_declaration(&mut self) -> Result<impl Statement, CompilerError> {
+    fn function_declaration(&mut self) -> PossibleStatement {
         self.fun_scope += 1;
         self.consume(TokenType::Identifer, "Expected a function name")?;
         let name = self.previous_literal();
         self.consume(TokenType::OpenParen, "Expected a '('")?;
-        let mut pl: Vec<Box<dyn Statement>> = vec![];
+        let mut pl: Vec<Box<AnyStatementEnum>> = vec![];
         if self.inverse_match_token(TokenType::CloseParen)? {
             loop {
                 self.consume(TokenType::Var, "Expected a parameter")?;
@@ -590,19 +595,19 @@ impl Parser {
         Ok(FunctionDeclaration {
             name,
             parameters_list: pl,
-            body: Box::new(block),
-        })
+            body: block.as_any_statement_enum().boxed(),
+        }.as_any_statement_enum())
     }
 
-    fn return_statement(&mut self) -> Result<ReturnStatement, CompilerError> {
+    fn return_statement(&mut self) -> PossibleStatement {
         if self.fun_scope == 0 {
             self.error("Can't write Return Statement in Global Scope")?;
         }
-        let expression = self.expression()?;
-        Ok(ReturnStatement { expression })
+        let expression = Box::new(self.expression()?);
+        Ok(ReturnStatement { expression }.as_any_statement_enum())
     }
-    fn statement(&mut self) -> Possible<dyn Statement> {
-        let v:Box<dyn Statement> = if self.match_token(TokenType::Var) {
+    fn statement(&mut self) -> PossibleStatement {
+        let v:Box<AnyStatementEnum> = if self.match_token(TokenType::Var) {
             let v = self.var_declaration()?;
             self.consume(
                 TokenType::Semicolon,
@@ -621,7 +626,7 @@ impl Parser {
             Box::new(v)
         } else if self.match_token(TokenType::OpenCurly) {
             let v = self.block()?;
-            Box::new(v)
+            Box::new(v.as_any_statement_enum())
         } else if self.match_token(TokenType::While) {
             let v = self.while_statement()?;
             Box::new(v)
@@ -644,9 +649,9 @@ impl Parser {
                 TokenType::Semicolon,
                 "Expected a semicolon after an expression",
             )?;
-            Box::new(ExpresssionStatement { expression: v })
+            Box::new(ExpresssionStatement { expression: Box::new(v) }.as_any_statement_enum())
         };
-        Ok(v)
+        Ok(*v)
     }
 
     fn synchronize(&mut self) {
@@ -678,7 +683,7 @@ impl Parser {
         self.status = ParserStatus::Failure;
     }
 
-    pub fn parse_statements(&mut self) -> Vec<Box<dyn Statement>> {
+    pub fn parse_statements(&mut self) -> Vec<AnyStatementEnum> {
         self.reset_errors();
         let mut statements = vec![];
         while !self.tokens.is_empty() && self.tokens.len() > self.curr_token {
@@ -702,7 +707,7 @@ mod tests {
     use crate::tokenizer::Tokenizer;
 
     use super::*;
-    fn check_for(stmt: Box<dyn Statement>, s: &str) {
+    fn check_for(stmt: AnyStatementEnum, s: &str) {
         let contents = s.chars().collect();
         let mut t = Tokenizer::create(&contents);
         let mut tokens = vec![];
@@ -734,9 +739,9 @@ mod tests {
     #[test]
     fn test_blocks()  {
         let s = "{}";
-        let o = Box::new(Block {
+        let o = Block {
             statements: vec![]
-        });
+        }.as_any_statement_enum();
         check_for(o, s);
     }
 
@@ -765,14 +770,14 @@ mod tests {
             let bo = BinaryOp {
                 left: Box::new(Identifier {
                                     name: "a".to_string()
-                                }),
+                                }.as_any_expression_enum()),
                 right: Box::new(Identifier {
                                     name: "b".to_string()
-                                }),
+                                }.as_any_expression_enum()),
                 op_type: y
             };
 
-            let stmt = wrap_expression(Box::new(bo));
+            let stmt = wrap_expression(bo.as_any_expression_enum());
 
             let st = format!("a {} b;" , x);
             check_for(stmt, &st);
@@ -785,24 +790,24 @@ mod tests {
             let bo = BinaryOp {
                 left: Box::new(Identifier {
                                     name: "a".to_string()
-                                }),
+                                }.as_any_expression_enum()),
                 right: Box::new(Identifier {
                                     name: "b".to_string()
-                                }),
+                                }.as_any_expression_enum()),
                 op_type: y
             };
 
-            let stmt = wrap_expression(Box::new(bo));
+            let stmt = wrap_expression(bo.as_any_expression_enum());
 
             check_for(stmt, x);
         }
 
     }
 
-    fn wrap_expression(expr: Box<dyn Expression>) -> Box<dyn Statement> {
-        Box::new(ExpresssionStatement {
-            expression: expr
-        })
+    fn wrap_expression(expr: AnyExpressionEnum) -> AnyStatementEnum {
+        ExpresssionStatement {
+            expression: Box::new(expr)
+        }.as_any_statement_enum()
     }
 
     #[test]
@@ -815,11 +820,11 @@ mod tests {
             let uo = UnaryOp {
                 operand: Box::new(Identifier {
                                     name: "a".to_string()
-                                }),
+                                }.as_any_expression_enum()),
                 op_type: y
             };
 
-            let stmt = wrap_expression(Box::new(uo));
+            let stmt = wrap_expression(uo.as_any_expression_enum());
 
             let st = format!("{}a;" , x);
             check_for(stmt, &st);
@@ -829,10 +834,10 @@ mod tests {
     #[test]
     fn test_identifer_exprs() {
         let s = "variable_name;";
-        let ident = Box::new(Identifier {
+        let ident = Identifier {
             name: "variable_name".to_string()
-        });
-        let stmt = wrap_expression(ident);
+        };
+        let stmt = wrap_expression(ident.as_any_expression_enum());
         check_for(stmt, s);
     }
 
@@ -840,32 +845,32 @@ mod tests {
     #[test]
     fn test_calls_exprs() {
         let s = "test_call();";
-        let ident = Box::new(Call {
+        let ident = Call {
             left: "test_call".to_string(),
             arguments: ExpressionList {
                 expressions: vec![]
             }
-        });
-        let stmt = wrap_expression(ident);
+        };
+        let stmt = wrap_expression(ident.as_any_expression_enum());
         check_for(stmt, s);
     }
 
     #[test]
     fn test_literal_exprs() {
-        let s_to_stmt: Vec<(_, Box<dyn Expression>)> = vec![
-        ("\"hello world\";", Box::new(StringLiteral { val: "hello world".to_string() })),
-        ("1.0;", Box::new(NumberLiteral { val: "1.0".to_string() })),
-        ("[1, 2];", Box::new(ArrayLiteral {
+        let s_to_stmt: Vec<(_, AnyExpressionEnum)> = vec![
+        ("\"hello world\";", StringLiteral { val: "hello world".to_string() }.as_any_expression_enum()),
+        ("1.0;", NumberLiteral { val: "1.0".to_string() }.as_any_expression_enum()),
+        ("[1, 2];", ArrayLiteral {
                 expressions: ExpressionList {
                     expressions: vec![
-                    Box::new(NumberLiteral{val:"1".to_string(),}),
-                    Box::new(NumberLiteral{val:"2".to_string(),})
+                    NumberLiteral{val:"1".to_string(),}.as_any_expression_enum().boxed(),
+                    NumberLiteral{val:"2".to_string(),}.as_any_expression_enum().boxed()
                     ]
                 }
-            })),
-        ("false;", Box::new(False {})),
-        ("true;", Box::new(True {})),
-        ("none;", Box::new(NoneVal {})),
+            }.as_any_expression_enum()),
+        ("false;", False {}.as_any_expression_enum()),
+        ("true;", True {}.as_any_expression_enum()),
+        ("none;", NoneVal {}.as_any_expression_enum()),
         ];
 
         for (x, y) in s_to_stmt {
