@@ -1,4 +1,8 @@
-use super::{AnyStatementEnum, Statement};
+use std::borrow::{Borrow, BorrowMut};
+
+use inkwell::values::BasicValue;
+
+use super::{var_decls::VarDeclaration, AnyStatementEnum, Statement};
 #[derive(Debug)]
 pub struct FunctionDeclaration {
     pub name: String,
@@ -19,19 +23,42 @@ impl Statement for FunctionDeclaration {
         let prev_bb = codegen.builder.get_insert_block().unwrap();
         let ft = codegen.context.f64_type();
         let mut params = vec![];
-        for _ in self.parameters_list.iter() {
+        for _ in &self.parameters_list {
             params.push(ft.into());
         }
         let fnt = ft.fn_type(&params, false);
         let func = codegen.module.add_function(&self.name, fnt, None);
 
-        // for (i, x) in self.parameters_list.into_iter().enumerate() {
-        // }
-        //
+
         codegen.fun_stack.push(func);
         let bb = codegen.context.append_basic_block(func, "entry");
         codegen.builder.position_at_end(bb);
+        for (i, x) in self.parameters_list.iter().enumerate() {
+            let v = x.as_var_declaration().unwrap();
+            codegen.allocate_variable(&v.identifier);
+            let ptr = codegen.get_variable(&v.identifier).unwrap();
+            match ptr {
+                crate::codegen::VariableReference::Local(x) => {
+                    let value = func.get_nth_param(i as u32).unwrap().into_float_value();
+                    let _ = codegen.builder.build_store(x, value);
+                }
+                _ => unreachable!()
+            }
+        }
+        codegen.allocate_variable(".return");
         self.body.generate_code(codegen);
+        let return_block = codegen.context.append_basic_block(func, "return");
+        let _ = codegen.builder.build_unconditional_branch(return_block);
+        codegen.builder.position_at_end(return_block);
+        let retptr = codegen.get_variable(".return").unwrap();
+        let retptr = match retptr {
+            crate::codegen::VariableReference::Local(x) => {
+                x
+            },
+            _ => unreachable!()
+        };
+        let retv = codegen.builder.build_load(retptr, "ret_value").unwrap();
+        let _ = codegen.builder.build_return(Some(&retv));
         codegen.fun_stack.pop();
         codegen.builder.position_at_end(prev_bb);
         codegen.decrease_scope();

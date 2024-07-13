@@ -1,0 +1,11 @@
+func print_add(var a, var b) {
+    print a + b;
+}
+
+print_add(5, 2);
+
+func add(var a, var b) {
+    return a + b;
+}
+
+print add(6, 9);

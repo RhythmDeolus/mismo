@@ -56,6 +56,13 @@ impl AnyStatementEnum {
             AnyStatementEnum::Expression(x) => x.generate_code(codegen),
         };
     }
+
+    pub fn as_var_declaration(&self) -> Option<&VarDeclaration> {
+        match self {
+            AnyStatementEnum::VarDeclaration(x) => Some(x),
+            _ => None
+        }
+    }
 }
 
 

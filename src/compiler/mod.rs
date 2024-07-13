@@ -131,7 +131,7 @@ impl Compiler {
         codegen.builder.position_at_end(codegen.main.get_last_basic_block().unwrap());
         let _ = codegen.builder.build_return(None);
         for x in codegen.main.get_basic_block_iter() {
-            if x.get_instructions().count() == 0 {
+            if  x.get_instructions().count() == 0 {
                 codegen.builder.position_at_end(x);
                 let _  = codegen.builder.build_unconditional_branch(x.get_next_basic_block().unwrap());
             }

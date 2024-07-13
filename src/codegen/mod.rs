@@ -1,10 +1,10 @@
 use ::std::error::Error;
 
-use inkwell::builder::Builder;
+use inkwell::builder::{self, Builder};
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
-use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
+use inkwell::values::{self, FunctionValue, GlobalValue, InstructionValue, PointerValue};
 use inkwell::OptimizationLevel;
 
 use crate::parser::statements::{AnyStatementEnum, Statement};
@@ -18,6 +18,7 @@ pub struct CodeGen<'ctx> {
     pub execution_engine: ExecutionEngine<'ctx>,
     pub main: FunctionValue<'ctx>,
     pub scoped_variables: Vec<(u16, String, inkwell::values::PointerValue<'ctx>)>,
+    pub return_points: Vec<values::InstructionValue<'ctx>>,
     pub fun_stack: Vec<FunctionValue<'ctx>>,
     pub curr_scope: u16,
 }
@@ -47,9 +48,14 @@ impl<'ctx> CodeGen<'ctx> {
             execution_engine,
             main,
             fun_stack,
+            return_points: vec![],
             scoped_variables: vec![],
             curr_scope: 0,
         })
+    }
+
+    pub fn print_module(&self) {
+        println!("Module: {}", self.module.to_string());
     }
     pub fn initialize(&self) {
         let void_type = self.context.void_type();
@@ -67,6 +73,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn get_curr_func(&self) -> FunctionValue {
         *self.fun_stack.last().unwrap()
     }
+
 
     pub fn get_variable(&self, name: &str) -> Option<VariableReference> {
         for (_, x, y) in self.scoped_variables.iter().rev() {
