@@ -44,7 +44,7 @@ impl AnyStatementEnum {
         Box::new(self)
     }
 
-    pub fn generate_code(&self, codegen: &mut CodeGen) {
+    pub fn generate_code<'a>(&self, codegen : &'a crate::codegen::CodeGen<'a>) {
         match self {
             AnyStatementEnum::Block(x) => x.generate_code(codegen),
             AnyStatementEnum::For(x) => x.generate_code(codegen),
@@ -67,7 +67,7 @@ impl AnyStatementEnum {
 
 
 pub trait Statement: Debug {
-    fn generate_code(&self, _ : &mut CodeGen) {
+    fn generate_code<'a>(&self, _ : &'a CodeGen<'a>) {
         println!("generating code..");
     }
 

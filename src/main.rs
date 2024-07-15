@@ -1,3 +1,5 @@
+use inkwell::context::Context;
+use mismo::codegen::CodeGen;
 use mismo::compiler::Compiler;
 use repl::run_repl;
 use std::env::{args, set_var};
@@ -18,11 +20,17 @@ fn main() {
         }
         Ok(contents) => {
             let compiler = Compiler::create();
-            let context = Compiler::get_context();
-            let mut codegen = Compiler::get_codegen(&context);
-            compiler.run(contents.chars().collect(), &mut codegen);
+            let context  = Compiler::get_context();
+            let codegen = Compiler::get_codegen(&context);
+            // let codegen = unsafe {
+            //     std::mem::transmute::<CodeGen<'_>, CodeGen<'static>>(codegen)
+            // };
+            let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
+
+            compiler.run(codegen_static , contents.chars().collect());
         }
     }
+
 }
 // use inkwell::builder::{self, Builder};
 // use inkwell::context::{self, Context};

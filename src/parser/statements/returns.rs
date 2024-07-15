@@ -15,16 +15,23 @@ impl Statement for ReturnStatement {
     fn as_any_statement_enum(self) -> super::AnyStatementEnum {
         super::AnyStatementEnum::Return(self)
     }
-    fn generate_code(&self, codegen : &mut crate::codegen::CodeGen) {
-        let e = self.expression.codegen_expression(codegen).into_float_value();
+    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
         println!("generating return statement...");
         codegen.print_module();
+        let prev_block = codegen.builder.get_insert_block().unwrap();
+        let return_point = codegen.context.append_basic_block(prev_block.get_parent().unwrap(), ".return_point");
+        codegen.builder.build_unconditional_branch(return_point);
+        codegen.builder.position_at_end(return_point);
+        let e = self.expression.codegen_expression(codegen).into_float_value();
         let retprt = match codegen.get_variable(".return").unwrap() {
             crate::codegen::VariableReference::Local(x) => x,
             _ => unreachable!()
         };
-        let instr = codegen.builder.build_store(retprt, e);
-        let instr =  instr.unwrap();
-        let _ = codegen.builder.build_unconditional_branch(codegen.builder.get_insert_block().unwrap().get_parent().unwrap().get_last_basic_block().unwrap());
+        codegen.builder.build_store(retprt, e);
+        codegen.return_points.lock().unwrap().push(return_point);
+        let then_block = codegen.context.append_basic_block(return_point.get_parent().unwrap(), "");
+        codegen.builder.position_at_end(then_block);
+        println!("generating return statement...");
+        codegen.print_module();
     }
 }

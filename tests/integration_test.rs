@@ -1,4 +1,4 @@
-use mismo::compiler;
+use mismo::{codegen::CodeGen, compiler};
 
 use std::{env, fs, panic::{catch_unwind, AssertUnwindSafe}};
 
@@ -24,8 +24,9 @@ fn test_cases() {
             let output_text = fs::read_to_string(output_paths[i].clone()).unwrap();
             let comp = compiler::Compiler::create();
             let context = compiler::Compiler::get_context();
-            let mut codegen = compiler::Compiler::get_codegen(&context);
-            comp.run(input_text.chars().collect(), &mut codegen);
+            let codegen = compiler::Compiler::get_codegen(&context);
+            let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
+            comp.run(codegen_static, input_text.chars().collect());
             let content = fs::read_to_string("./tests/temp.out.txt").unwrap();
             println!("?: {} = {}", content, output_text);
             assert_eq!(content, output_text);

@@ -18,7 +18,7 @@ impl Statement for FunctionDeclaration {
             body
         }.as_any_statement_enum()
     }
-    fn generate_code(&self, codegen : &mut crate::codegen::CodeGen) {
+    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
         codegen.increase_scope();
         let prev_bb = codegen.builder.get_insert_block().unwrap();
         let ft = codegen.context.f64_type();
@@ -30,7 +30,7 @@ impl Statement for FunctionDeclaration {
         let func = codegen.module.add_function(&self.name, fnt, None);
 
 
-        codegen.fun_stack.push(func);
+        codegen.push_func_stack(func);
         let bb = codegen.context.append_basic_block(func, "entry");
         codegen.builder.position_at_end(bb);
         for (i, x) in self.parameters_list.iter().enumerate() {
@@ -59,9 +59,19 @@ impl Statement for FunctionDeclaration {
         };
         let retv = codegen.builder.build_load(retptr, "ret_value").unwrap();
         let _ = codegen.builder.build_return(Some(&retv));
-        codegen.fun_stack.pop();
+        //setting return points
+        let prev_block = codegen.builder.get_insert_block().unwrap();
+        let return_points = codegen.return_points.lock().unwrap();
+        for x in &*return_points {
+            codegen.builder.position_at_end(*x);
+            let _ = codegen.builder.build_unconditional_branch(return_block);
+        }
+        codegen.builder.position_at_end(prev_block);
+        codegen.pop_func_stack();
         codegen.builder.position_at_end(prev_bb);
         codegen.decrease_scope();
+        println!("finishing function: ");
+        codegen.print_module();
     }
     fn as_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::FunctionDeclaration(self)

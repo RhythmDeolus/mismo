@@ -1,21 +1,20 @@
 use std::{borrow::Borrow, collections::HashMap};
 
 use inkwell::{
-     passes, targets::{CodeModel, Target, TargetMachine},
-    context::Context
+     context::{self, Context}, passes, targets::{CodeModel, Target, TargetMachine}
 };
 
 use crate::{
-    codegen::CodeGen, parser::{statements::{AnyStatementEnum, Statement}, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
+    codegen::{self, CodeGen}, parser::{statements::{AnyStatementEnum, Statement}, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
 };
 
 #[allow(dead_code)] //TODO
 pub struct Compiler {
-    keywords_to_tokentype: HashMap<&'static str, TokenType>,
-    tokentype_to_keyword: HashMap<TokenType, &'static str>,
+    pub keywords_to_tokentype: HashMap<&'static str, TokenType>,
+    pub tokentype_to_keyword: HashMap<TokenType, &'static str>,
 }
 
-impl Compiler {
+impl<'ctx> Compiler {
     pub fn create() -> Self {
         let map: HashMap<_, _> = HashMap::from([
             ("if", TokenType::If),
@@ -36,6 +35,8 @@ impl Compiler {
         for (k, v) in map.iter() {
             map2.insert(*v, k.to_owned());
         }
+
+
 
         Compiler {
             keywords_to_tokentype: map,
@@ -92,7 +93,7 @@ impl Compiler {
         }
     }
 
-    pub fn run(&self, contents: Vec<char>, codegen: &mut CodeGen) {
+    pub fn run(&self, codegen: &'ctx CodeGen<'ctx>, contents:  Vec<char>) {
         // tokenization
         let mut tokenizer = Tokenizer::create(&contents);
         let mut tokens = vec![];

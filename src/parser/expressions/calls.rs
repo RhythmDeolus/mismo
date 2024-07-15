@@ -1,3 +1,6 @@
+use core::panic;
+
+use inkwell::execution_engine;
 use inkwell::values::AnyValue;
 
 use crate::codegen;
@@ -36,7 +39,8 @@ impl Expression for InbuiltCall {
                 let f = f.as_any_value_enum().into_function_value();
                 let _ = codegen.builder.build_call(f, &[], "");
             }
-        }codegen.context.f64_type().const_zero().as_any_value_enum()
+        }
+        codegen.context.f64_type().const_zero().as_any_value_enum()
     }
     fn desugar(self) -> AnyExpressionEnum {
         InbuiltCall{
@@ -75,8 +79,7 @@ impl Expression for Call {
             let retv = codegen.builder.build_call(val, &args, "retv");
             let retv = retv.unwrap().as_any_value_enum();
             return retv.as_any_value_enum();
-        }
-        //TODO
+        }         //TODO
         codegen.context.f64_type().const_zero().as_any_value_enum()
     }
     fn desugar(self) -> AnyExpressionEnum{

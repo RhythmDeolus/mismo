@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 
+use mismo::codegen::CodeGen;
+
 fn check_if_brackets_of_anytype_match(contents: Vec<char>) -> usize {
     let mut stack = vec![];
     for c in contents.iter() {
@@ -25,7 +27,7 @@ fn check_if_brackets_of_anytype_match(contents: Vec<char>) -> usize {
 pub fn run_repl() {
     let comp = mismo::compiler::Compiler::create();
     let context = mismo::compiler::Compiler::get_context();
-    let mut codegen = mismo::compiler::Compiler::get_codegen(&context);
+    let codegen = mismo::compiler::Compiler::get_codegen(&context);
     loop {
         print!(">> "); 
         io::stdout().flush().unwrap();
@@ -44,7 +46,8 @@ pub fn run_repl() {
             input.push_str(&append);
             i = check_if_brackets_of_anytype_match(input.chars().collect());
         }
-        comp.run(input.chars().collect(), &mut codegen);
+        let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
+        comp.run(codegen_static, input.chars().collect());
         io::stdout().flush().unwrap();
     }
 }

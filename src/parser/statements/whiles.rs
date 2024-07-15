@@ -9,7 +9,7 @@ pub struct WhileStatement {
     pub statement: Box<AnyStatementEnum>,
 }
 impl Statement for WhileStatement {
-    fn generate_code(&self, codegen: &mut crate::codegen::CodeGen) {
+    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
         let parent = codegen.builder.get_insert_block().unwrap();
         let fun = parent.get_parent().unwrap();
         let condition_block = codegen.context.append_basic_block(fun, "");

@@ -13,6 +13,18 @@ pub extern fn print_time() {
     }
 }
 
+pub extern fn get_time() -> f64 {
+    let t =  SystemTime::now().duration_since(SystemTime::UNIX_EPOCH);
+    match t {
+        Ok(x) => {
+            x.as_secs_f64()
+        }
+        Err(_) => {
+            panic!("oh oh")
+        }
+    }
+}
+
 pub extern fn print(a: f64) {
     let mut file = OpenOptions::new()
         .append(true)

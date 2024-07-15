@@ -1,15 +1,18 @@
+use std::borrow::BorrowMut;
 use ::std::error::Error;
+use std::sync::Mutex;
 
+use inkwell::basic_block::BasicBlock;
 use inkwell::builder::{self, Builder};
 use inkwell::context::Context;
-use inkwell::execution_engine::ExecutionEngine;
+use inkwell::execution_engine::{ExecutionEngine, FunctionLookupError};
 use inkwell::module::Module;
-use inkwell::values::{self, FunctionValue, GlobalValue, InstructionValue, PointerValue};
+use inkwell::values::{self, BasicValue, FunctionValue, GlobalValue, InstructionValue, PointerValue};
 use inkwell::OptimizationLevel;
 
 use crate::parser::statements::{AnyStatementEnum, Statement};
 
-mod mystd;
+pub mod mystd;
 
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
@@ -17,10 +20,10 @@ pub struct CodeGen<'ctx> {
     pub builder: Builder<'ctx>,
     pub execution_engine: ExecutionEngine<'ctx>,
     pub main: FunctionValue<'ctx>,
-    pub scoped_variables: Vec<(u16, String, inkwell::values::PointerValue<'ctx>)>,
-    pub return_points: Vec<values::InstructionValue<'ctx>>,
-    pub fun_stack: Vec<FunctionValue<'ctx>>,
-    pub curr_scope: u16,
+    pub scoped_variables: Mutex<Vec<(u16, String, inkwell::values::PointerValue<'ctx>)>>,
+    pub return_points: Mutex<Vec<BasicBlock<'ctx>>>,
+    pub fun_stack: Mutex<Vec<FunctionValue<'ctx>>>,
+    pub curr_scope: Mutex<u16>,
 }
 
 pub enum VariableReference<'a> {
@@ -39,7 +42,7 @@ impl<'ctx> CodeGen<'ctx> {
         let fnt = context.void_type().fn_type(&[], false);
         let main = module.add_function("main", fnt, None);
         let bb = context.append_basic_block(main, "entry");
-        let fun_stack = vec![main];
+        let fun_stack = Mutex::new(vec![main]);
         builder.position_at_end(bb);
         Ok(CodeGen {
             context,
@@ -48,9 +51,9 @@ impl<'ctx> CodeGen<'ctx> {
             execution_engine,
             main,
             fun_stack,
-            return_points: vec![],
-            scoped_variables: vec![],
-            curr_scope: 0,
+            return_points: Mutex::new(vec![]),
+            scoped_variables: Mutex::new(vec![]),
+            curr_scope: Mutex::new(0),
         })
     }
 
@@ -64,6 +67,9 @@ impl<'ctx> CodeGen<'ctx> {
         self.execution_engine
             .add_global_mapping(&extf, mystd::print_time as usize);
         let ft = self.context.f64_type();
+        let fnt2 =  ft.fn_type(&[], false);
+        let extf3 = self.module.add_function("get_time", fnt2, None);
+        self.execution_engine.add_global_mapping(&extf3, mystd::get_time as usize);
         let fnt2 = void_type.fn_type(&[ft.into()], false);
         let extf2 = self.module.add_function("print", fnt2, None);
         self.execution_engine
@@ -71,12 +77,19 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub fn get_curr_func(&self) -> FunctionValue {
-        *self.fun_stack.last().unwrap()
+        *self.fun_stack.lock().unwrap().last().unwrap()
+    }
+    pub fn push_func_stack(&self, func: FunctionValue<'ctx>) {
+        self.fun_stack.lock().unwrap().push(func);
+    }
+    
+    pub fn pop_func_stack(&self) -> Option<FunctionValue<'ctx>>{
+        self.fun_stack.lock().unwrap().pop()
     }
 
 
     pub fn get_variable(&self, name: &str) -> Option<VariableReference> {
-        for (_, x, y) in self.scoped_variables.iter().rev() {
+        for (_, x, y) in self.scoped_variables.lock().unwrap().iter().rev() {
             if x == name {
                 return Some(VariableReference::Local(*y));
             }
@@ -84,12 +97,14 @@ impl<'ctx> CodeGen<'ctx> {
         Some(VariableReference::Global(self.module.get_global(name)?))
     }
 
-    pub fn increase_scope(&mut self) {
-        self.curr_scope += 1;
+    pub fn increase_scope(&self) {
+        let mut curr_scope = self.curr_scope.lock().unwrap();
+        *curr_scope += 1;
     }
 
-    pub fn allocate_variable(&mut self, name: &str) {
-        if self.curr_scope == 0 {
+    pub fn allocate_variable(&self, name: &str) {
+        let curr_scope = self.curr_scope.lock().unwrap();
+        if *curr_scope == 0 {
             self.module.add_global(self.context.f64_type(), None, name);
             return;
         }
@@ -120,27 +135,29 @@ impl<'ctx> CodeGen<'ctx> {
             .builder
             .build_store(ptr, self.context.f64_type().const_zero());
         self.scoped_variables
-            .push((self.curr_scope, name.to_string(), ptr));
+            .lock().unwrap().push((*curr_scope, name.to_string(), ptr));
         self.builder.position_at_end(curr_block);
     }
 
-    pub fn decrease_scope(&mut self) {
-        self.curr_scope -= 1;
-        let curr_i = self.curr_scope;
-        let mut i = self.scoped_variables.len();
-        for (x, _, _) in self.scoped_variables.iter().rev() {
+    pub fn decrease_scope(&self) {
+        let mut curr_scope = self.curr_scope.lock().unwrap();
+        *curr_scope -= 1;
+        let curr_i = *curr_scope;
+        let mut scoped_variables = self.scoped_variables.lock().unwrap();
+        let mut i = scoped_variables.len();
+        for (x, _, _) in scoped_variables.iter().rev() {
             if *x <= curr_i {
                 break;
             }
             i -= 1;
         }
-        while self.scoped_variables.len() > i {
-            let v = self.scoped_variables.len();
-            self.scoped_variables.remove(v - 1);
+        while scoped_variables.len() > i {
+            let v = scoped_variables.len();
+            scoped_variables.remove(v - 1);
         }
     }
 
-    pub fn codegen(&mut self, stmt: AnyStatementEnum) {
+    pub fn codegen(&'ctx self, stmt:  AnyStatementEnum) {
         stmt.generate_code(self);
     }
 }
