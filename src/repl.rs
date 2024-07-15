@@ -46,8 +46,8 @@ pub fn run_repl() {
             input.push_str(&append);
             i = check_if_brackets_of_anytype_match(input.chars().collect());
         }
-        let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
-        comp.run(codegen_static, input.chars().collect());
+        // let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
+        comp.run(&codegen, input.chars().collect());
         io::stdout().flush().unwrap();
     }
 }

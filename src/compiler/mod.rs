@@ -93,7 +93,7 @@ impl<'ctx> Compiler {
         }
     }
 
-    pub fn run(&self, codegen: &'ctx CodeGen<'ctx>, contents:  Vec<char>) {
+    pub fn run(&self, codegen: &CodeGen<'ctx>, contents:  Vec<char>) {
         // tokenization
         let mut tokenizer = Tokenizer::create(&contents);
         let mut tokens = vec![];

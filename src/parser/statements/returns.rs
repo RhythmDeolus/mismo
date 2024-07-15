@@ -15,7 +15,7 @@ impl Statement for ReturnStatement {
     fn as_any_statement_enum(self) -> super::AnyStatementEnum {
         super::AnyStatementEnum::Return(self)
     }
-    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
+    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         println!("generating return statement...");
         codegen.print_module();
         let prev_block = codegen.builder.get_insert_block().unwrap();

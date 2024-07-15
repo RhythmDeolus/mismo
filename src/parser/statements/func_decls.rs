@@ -18,7 +18,7 @@ impl Statement for FunctionDeclaration {
             body
         }.as_any_statement_enum()
     }
-    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
+    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         codegen.increase_scope();
         let prev_bb = codegen.builder.get_insert_block().unwrap();
         let ft = codegen.context.f64_type();

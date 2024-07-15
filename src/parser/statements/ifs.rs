@@ -10,29 +10,27 @@ pub struct IfStatement {
 }
 
 impl Statement for IfStatement {
-    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
-        let fun = codegen.builder.get_insert_block()
-                        .unwrap()
-                        .get_parent()
-                        .unwrap();
+    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
+        let fun = codegen
+            .builder
+            .get_insert_block()
+            .unwrap()
+            .get_parent()
+            .unwrap();
         let prev_block = codegen.builder.get_insert_block().unwrap();
 
         let i = self.expression.codegen_expression(codegen);
         let i = i.into_int_value();
         println!("parsed as {}", i);
-        let then_block = codegen
-            .context
-            .append_basic_block(fun,  "if_then");
-        
+        let then_block = codegen.context.append_basic_block(fun, "if_then");
+
         codegen.increase_scope();
         codegen.builder.position_at_end(then_block);
-        self.block.generate_code(codegen); 
+        self.block.generate_code(codegen);
         codegen.decrease_scope();
         let then_block_end = codegen.builder.get_insert_block().unwrap();
 
-        let else_block = codegen
-            .context
-            .append_basic_block(fun, "else");
+        let else_block = codegen.context.append_basic_block(fun, "else");
         if self.else_block.is_some() {
             codegen.builder.position_at_end(else_block);
             codegen.increase_scope();
@@ -47,9 +45,7 @@ impl Statement for IfStatement {
             .build_conditional_branch(i, then_block, else_block)
             .unwrap();
 
-        let return_block = codegen
-            .context
-            .append_basic_block(fun, "if_return");
+        let return_block = codegen.context.append_basic_block(fun, "if_return");
 
         codegen.builder.position_at_end(then_block_end);
         let _ = codegen.builder.build_unconditional_branch(return_block);
@@ -71,8 +67,9 @@ impl Statement for IfStatement {
         IfStatement {
             expression,
             block,
-            else_block
-        }.as_any_statement_enum()
+            else_block,
+        }
+        .as_any_statement_enum()
     }
     fn as_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::If(self)

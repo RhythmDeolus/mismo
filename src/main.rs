@@ -25,9 +25,9 @@ fn main() {
             // let codegen = unsafe {
             //     std::mem::transmute::<CodeGen<'_>, CodeGen<'static>>(codegen)
             // };
-            let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
+            // let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
 
-            compiler.run(codegen_static , contents.chars().collect());
+            compiler.run(&codegen , contents.chars().collect());
         }
     }
 

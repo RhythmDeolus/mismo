@@ -4,7 +4,7 @@ pub struct Block {
     pub statements: Vec<Box<AnyStatementEnum>>,
 }
 impl Statement for Block {
-    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
+    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         codegen.increase_scope();
         for stmt in self.statements.iter() {
             stmt.generate_code(codegen)

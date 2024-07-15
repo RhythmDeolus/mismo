@@ -9,7 +9,7 @@ pub struct VarDeclaration {
 }
 
 impl Statement for VarDeclaration {
-    fn generate_code<'a>(& self, codegen : &'a crate::codegen::CodeGen<'a>) {
+    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         if let Some(e) = &self.expression {
             codegen.allocate_variable(&self.identifier);
             let val = e.codegen_expression(codegen);

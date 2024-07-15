@@ -25,8 +25,8 @@ fn test_cases() {
             let comp = compiler::Compiler::create();
             let context = compiler::Compiler::get_context();
             let codegen = compiler::Compiler::get_codegen(&context);
-            let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
-            comp.run(codegen_static, input_text.chars().collect());
+            // let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
+            comp.run(&codegen, input_text.chars().collect());
             let content = fs::read_to_string("./tests/temp.out.txt").unwrap();
             println!("?: {} = {}", content, output_text);
             assert_eq!(content, output_text);

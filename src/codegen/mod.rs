@@ -157,7 +157,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    pub fn codegen(&'ctx self, stmt:  AnyStatementEnum) {
+    pub fn codegen(&self, stmt:  AnyStatementEnum) {
         stmt.generate_code(self);
     }
 }
