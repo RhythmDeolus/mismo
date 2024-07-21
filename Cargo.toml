@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 duplicate = "1.0.0"
 dyn-clone = "1.0.17"
-inkwell = { git = "https://github.com/TheDan64/inkwell.git", branch = "master" , features = ["llvm14-0-force-dynamic"] }
+inkwell = { git = "https://github.com/TheDan64/inkwell.git", branch = "master" , features = ["llvm14-0-force-static"] }
