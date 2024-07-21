@@ -1,7 +1,6 @@
 use crate::parser::expressions::AnyExpressionEnum;
 
 use super::{AnyStatementEnum, Statement};
-use super::super::expressions::Expression;
 #[derive(Debug)]
 pub struct VarDeclaration {
     pub identifier: String,
@@ -11,8 +10,8 @@ pub struct VarDeclaration {
 impl Statement for VarDeclaration {
     fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         if let Some(e) = &self.expression {
-            codegen.allocate_variable(&self.identifier);
             let val = e.codegen_expression(codegen);
+            codegen.allocate_variable(&self.identifier);
             let ptr = codegen.get_variable(&self.identifier).unwrap();
             // TODO: Error handling
             match ptr {
@@ -31,9 +30,9 @@ impl Statement for VarDeclaration {
         VarDeclaration {
             identifier: self.identifier.clone(),
             expression: self.expression.map(|x| x.desugar().boxed())
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
-    fn as_any_statement_enum(self) -> super::AnyStatementEnum {
+    fn into_any_statement_enum(self) -> super::AnyStatementEnum {
         super::AnyStatementEnum::VarDeclaration(self)
     }
 }

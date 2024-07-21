@@ -1,7 +1,5 @@
 use std::io::{self, Write};
 
-use mismo::codegen::CodeGen;
-
 fn check_if_brackets_of_anytype_match(contents: Vec<char>) -> usize {
     let mut stack = vec![];
     for c in contents.iter() {

@@ -1,17 +1,18 @@
-use std::{borrow::Borrow, collections::HashMap};
+use std::collections::HashMap;
 
 use inkwell::{
-     context::{self, Context}, passes, targets::{CodeModel, Target, TargetMachine}
+     context::Context, passes, targets::{CodeModel, Target, TargetMachine}
 };
 
 use crate::{
-    codegen::{self, CodeGen}, parser::{statements::{AnyStatementEnum, Statement}, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
+    codegen::CodeGen, parser::{statements::AnyStatementEnum, CompilerError, Parser, ParserStatus}, tokenizer::{token::TokenType, Tokenizer}
 };
 
 #[allow(dead_code)] //TODO
 pub struct Compiler {
     pub keywords_to_tokentype: HashMap<&'static str, TokenType>,
     pub tokentype_to_keyword: HashMap<TokenType, &'static str>,
+    pub show_info: bool,
 }
 
 impl<'ctx> Compiler {
@@ -41,7 +42,12 @@ impl<'ctx> Compiler {
         Compiler {
             keywords_to_tokentype: map,
             tokentype_to_keyword: map2,
+            show_info: false
         }
+    }
+
+    pub fn set_show_info(&mut self, val: bool) {
+        self.show_info = val;
     }
 
     pub fn get_context() -> Context {
@@ -99,7 +105,9 @@ impl<'ctx> Compiler {
         let mut tokens = vec![];
 
         while let Some(x) = tokenizer.next_token(&self.keywords_to_tokentype) {
-            println!("{:?}", x);
+            if self.show_info {
+                println!("{:?}", x);
+            }
             tokens.push(x);
         }
 
@@ -107,12 +115,16 @@ impl<'ctx> Compiler {
         let mut parser = Parser::create(tokens);
 
         let statements = parser.parse_statements();
-        match parser.status {
-            ParserStatus::Ok => {
-                Compiler::print_statements(&statements);
-            }
-            ParserStatus::Failure => {
-                Compiler::print_errors(&contents, parser.errors);
+
+        //printing info
+        if self.show_info {
+            match parser.status {
+                ParserStatus::Ok => {
+                    Compiler::print_statements(&statements);
+                }
+                ParserStatus::Failure => {
+                    Compiler::print_errors(&contents, parser.errors);
+                }
             }
         }
 
@@ -122,7 +134,10 @@ impl<'ctx> Compiler {
         for stmt in statements {
             desugared_statements.push(stmt.desugar())
         }
-        Compiler::print_statements(&desugared_statements);
+        //printing info
+        if self.show_info {
+            Compiler::print_statements(&desugared_statements);
+        }
 
 
         // code generation
@@ -138,7 +153,7 @@ impl<'ctx> Compiler {
             }
         }
         let can_work = codegen.main.verify(true);
-        if !can_work {
+        if self.show_info && !can_work {
             println!("{}", codegen.module.to_string());
             panic!("Can't Compile!");
         }
@@ -156,10 +171,13 @@ impl<'ctx> Compiler {
         ).unwrap();
 
         let result = codegen.module.run_passes("mem2reg,loop-unroll", &tm, passes::PassBuilderOptions::create());
-        println!("{:?}", result);
+        if self.show_info { 
+            println!("{:?}", result);
 
-        println!("{}", codegen.module.to_string());
-        println!("{}", codegen.main);
+            println!("{}", codegen.module.to_string());
+            println!("{}", codegen.main);
+        }
+
 
         // jit compilation & execution
         unsafe {

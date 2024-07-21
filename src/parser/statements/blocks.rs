@@ -18,9 +18,9 @@ impl Statement for Block {
         }
         Block {
             statements: new_stmts
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
-    fn as_any_statement_enum(self) -> AnyStatementEnum {
+    fn into_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::Block(self)
     }
 }

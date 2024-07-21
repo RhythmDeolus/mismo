@@ -11,7 +11,7 @@ impl Expression for Identifier {
     fn is_assignable(&self) -> bool {
         true
     }
-    fn as_any_expression_enum(self) -> super::AnyExpressionEnum {
+    fn into_any_expression_enum(self) -> super::AnyExpressionEnum {
         super::AnyExpressionEnum::Identifier(self)
     }
     fn codegen_expression<'a>(&self, codegen: &'a crate::codegen::CodeGen) -> inkwell::values::AnyValueEnum<'a>{
@@ -32,12 +32,12 @@ impl Expression for Identifier {
         codegen.get_variable(&self.name).unwrap()
     }
     fn desugar(self) -> AnyExpressionEnum {
-        self.as_any_expression_enum()
+        self.into_any_expression_enum()
     }
     fn my_clone(&self) -> AnyExpressionEnum {
         Identifier {
             name: self.name.clone()
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{AnyExpressionEnum, Expression};
+use super::AnyExpressionEnum;
 #[derive(Debug)]
 pub struct ExpressionList{
     pub expressions: Vec<Box<AnyExpressionEnum>>,

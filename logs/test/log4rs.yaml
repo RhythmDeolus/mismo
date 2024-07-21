@@ -1,0 +1,21 @@
+refresh_rate: 30 seconds
+appenders:
+  stdout:
+    kind: console
+  debug:
+    kind: rolling_file
+    path: "logs/test/debug.log"
+    policy:
+      kind: compound
+      trigger:
+        kind: size
+        limit: 1mb
+      roller:
+        kind: fixed_window
+        base: 1
+        count: 5
+        pattern: "logs/test/{}.log"
+root:
+  level: info
+  appenders:
+    - debug

@@ -1,8 +1,5 @@
-use std::borrow::{Borrow, BorrowMut};
+use super::{AnyStatementEnum, Statement};
 
-use inkwell::values::BasicValue;
-
-use super::{var_decls::VarDeclaration, AnyStatementEnum, Statement};
 #[derive(Debug)]
 pub struct FunctionDeclaration {
     pub name: String,
@@ -16,7 +13,7 @@ impl Statement for FunctionDeclaration {
             name: self.name.clone(),
             parameters_list: self.parameters_list.into_iter().map(|x| x.desugar().boxed()).collect(),
             body
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
     fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         codegen.increase_scope();
@@ -70,10 +67,9 @@ impl Statement for FunctionDeclaration {
         codegen.pop_func_stack();
         codegen.builder.position_at_end(prev_bb);
         codegen.decrease_scope();
-        println!("finishing function: ");
         codegen.print_module();
     }
-    fn as_any_statement_enum(self) -> AnyStatementEnum {
+    fn into_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::FunctionDeclaration(self)
     }
 }

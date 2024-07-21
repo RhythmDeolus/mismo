@@ -1,7 +1,6 @@
 use crate::parser::expressions::AnyExpressionEnum;
 
 use super::{AnyStatementEnum, Statement};
-use super::super::expressions::Expression;
 
 #[derive(Debug)]
 pub struct ExpresssionStatement {
@@ -15,9 +14,9 @@ impl Statement for ExpresssionStatement {
         let e = self.expression.desugar().boxed();
         ExpresssionStatement {
             expression: e
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
-    fn as_any_statement_enum(self) -> super::AnyStatementEnum {
+    fn into_any_statement_enum(self) -> super::AnyStatementEnum {
         super::AnyStatementEnum::Expression(self)
     }
 }

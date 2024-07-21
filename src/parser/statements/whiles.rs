@@ -1,7 +1,6 @@
 use crate::parser::expressions::AnyExpressionEnum;
 
 use super::{AnyStatementEnum, Statement};
-use super::super::expressions::Expression;
 
 #[derive(Debug)]
 pub struct WhileStatement {
@@ -31,9 +30,9 @@ impl Statement for WhileStatement {
         WhileStatement{
             expression: self.expression.desugar().boxed(),
             statement: self.statement.desugar().boxed()
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
-    fn as_any_statement_enum(self) -> AnyStatementEnum {
+    fn into_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::While(self)
     }
 }

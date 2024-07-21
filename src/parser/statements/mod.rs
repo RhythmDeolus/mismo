@@ -1,7 +1,5 @@
 use std::fmt::Debug;
 
-use crate::codegen::CodeGen;
-
 use self::{
     blocks::Block, exprs::ExpresssionStatement, fors::ForStatement, func_decls::FunctionDeclaration, ifs::IfStatement, returns::ReturnStatement, var_decls::VarDeclaration, whiles::WhileStatement
 };
@@ -72,5 +70,5 @@ pub trait Statement: Debug {
     }
 
     fn desugar(self) -> AnyStatementEnum;
-    fn as_any_statement_enum(self) -> AnyStatementEnum;
+    fn into_any_statement_enum(self) -> AnyStatementEnum;
 }
