@@ -1,0 +1,36 @@
+name: Rust Test
+
+on: 
+  pull_request:
+    branches:
+      - master
+
+env:
+  LLMV_SYS_PREFIX_140: ./llvm
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rust: [stable]
+
+    steps:
+
+    - name: Install rust
+      uses: hecrj/setup-rust-action@v2
+      with:
+        rust-version: ${{ matrix.rust }}
+
+    - uses: actions/checkout@master
+    
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v2
+      with:
+        version: "14.0"
+        directory: ./llvm
+
+    - name: Run tests
+      run:
+        cargo test --verbose
