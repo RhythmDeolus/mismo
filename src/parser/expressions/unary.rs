@@ -29,7 +29,7 @@ impl Expression for UnaryOp {
             }
         }
     }
-    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+    fn into_any_expression_enum(self) -> AnyExpressionEnum {
         AnyExpressionEnum::Unary(self)
     }
     fn desugar(self) -> AnyExpressionEnum {
@@ -37,13 +37,13 @@ impl Expression for UnaryOp {
         UnaryOp {
             operand,
             op_type: self.op_type
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
     fn my_clone(&self) -> AnyExpressionEnum {
         UnaryOp {
             op_type: self.op_type,
             operand: self.operand.my_clone().boxed()
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
 }
 

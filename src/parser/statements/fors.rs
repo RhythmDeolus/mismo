@@ -14,7 +14,7 @@ pub struct ForStatement {
     pub statement: Box<AnyStatementEnum>,
 }
 impl Statement for ForStatement {
-    fn as_any_statement_enum(self) -> AnyStatementEnum {
+    fn into_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::For(self)
     }
     fn desugar(self) -> AnyStatementEnum {
@@ -29,20 +29,20 @@ impl Statement for ForStatement {
         let mut inner_block_statements = vec![];
         inner_block_statements.push(Block {
                     statements: vec![statement.boxed()],
-                }.as_any_statement_enum().boxed());
+                }.into_any_statement_enum().boxed());
         if let Some(x) = change {
             for t in x.expressions {
-                inner_block_statements.push(ExpresssionStatement { expression: t }.as_any_statement_enum().boxed());
+                inner_block_statements.push(ExpresssionStatement { expression: t }.into_any_statement_enum().boxed());
             }
         }
         block_statements.push(WhileStatement {
-            expression: check.unwrap_or(True.as_any_expression_enum()).boxed(),
+            expression: check.unwrap_or(True.into_any_expression_enum()).boxed(),
             statement: Block {
                 statements: inner_block_statements,
-            }.as_any_statement_enum().boxed(),
-        }.as_any_statement_enum().boxed());
+            }.into_any_statement_enum().boxed(),
+        }.into_any_statement_enum().boxed());
         Block {
             statements: block_statements,
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
 }

@@ -1,16 +1,15 @@
-use std::borrow::BorrowMut;
 use ::std::error::Error;
 use std::sync::Mutex;
 
 use inkwell::basic_block::BasicBlock;
-use inkwell::builder::{self, Builder};
+use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::execution_engine::{ExecutionEngine, FunctionLookupError};
+use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
-use inkwell::values::{self, BasicValue, FunctionValue, GlobalValue, InstructionValue, PointerValue};
+use inkwell::values::{FunctionValue, GlobalValue,  PointerValue};
 use inkwell::OptimizationLevel;
 
-use crate::parser::statements::{AnyStatementEnum, Statement};
+use crate::parser::statements::AnyStatementEnum;
 
 pub mod mystd;
 
@@ -24,6 +23,7 @@ pub struct CodeGen<'ctx> {
     pub return_points: Mutex<Vec<BasicBlock<'ctx>>>,
     pub fun_stack: Mutex<Vec<FunctionValue<'ctx>>>,
     pub curr_scope: Mutex<u16>,
+    pub show_info: bool,
 }
 
 pub enum VariableReference<'a> {
@@ -54,11 +54,14 @@ impl<'ctx> CodeGen<'ctx> {
             return_points: Mutex::new(vec![]),
             scoped_variables: Mutex::new(vec![]),
             curr_scope: Mutex::new(0),
+            show_info: false,
         })
     }
 
     pub fn print_module(&self) {
-        println!("Module: {}", self.module.to_string());
+        if self.show_info {
+            println!("Module: {}", self.module.to_string());
+        }
     }
     pub fn initialize(&self) {
         let void_type = self.context.void_type();
@@ -102,7 +105,7 @@ impl<'ctx> CodeGen<'ctx> {
         *curr_scope += 1;
     }
 
-    pub fn allocate_variable(&self, name: &str) {
+    pub fn allocate_variable(& self, name: &str) {
         let curr_scope = self.curr_scope.lock().unwrap();
         if *curr_scope == 0 {
             self.module.add_global(self.context.f64_type(), None, name);

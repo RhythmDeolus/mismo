@@ -1,6 +1,5 @@
 use crate::parser::expressions::AnyExpressionEnum;
 
-use super::super::expressions::Expression;
 use super::{AnyStatementEnum, Statement};
 #[derive(Debug)]
 pub struct IfStatement {
@@ -21,7 +20,6 @@ impl Statement for IfStatement {
 
         let i = self.expression.codegen_expression(codegen);
         let i = i.into_int_value();
-        println!("parsed as {}", i);
         let then_block = codegen.context.append_basic_block(fun, "if_then");
 
         codegen.increase_scope();
@@ -69,9 +67,9 @@ impl Statement for IfStatement {
             block,
             else_block,
         }
-        .as_any_statement_enum()
+        .into_any_statement_enum()
     }
-    fn as_any_statement_enum(self) -> AnyStatementEnum {
+    fn into_any_statement_enum(self) -> AnyStatementEnum {
         AnyStatementEnum::If(self)
     }
 }

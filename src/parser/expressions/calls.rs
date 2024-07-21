@@ -1,9 +1,5 @@
-use core::panic;
-
-use inkwell::execution_engine;
 use inkwell::values::AnyValue;
 
-use crate::codegen;
 
 use super::expr_list::ExpressionList;
 use super::{AnyExpressionEnum, Expression};
@@ -19,7 +15,7 @@ pub struct InbuiltCall {
     pub arguments: ExpressionList,
 }
 impl Expression for InbuiltCall {
-    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+    fn into_any_expression_enum(self) -> AnyExpressionEnum {
         AnyExpressionEnum::InbuiltCall(self)
     }
     fn codegen_expression<'a>(&self, codegen: &'a crate::codegen::CodeGen) -> inkwell::values::AnyValueEnum<'a> {
@@ -46,13 +42,13 @@ impl Expression for InbuiltCall {
         InbuiltCall{
             arguments: self.arguments.desugar(),
             c_type: self.c_type
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
     fn my_clone(&self) -> AnyExpressionEnum {
         InbuiltCall {
             c_type: self.c_type,
             arguments: self.arguments.my_clone()
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
 }
 #[derive(Debug)]
@@ -61,7 +57,7 @@ pub struct Call {
     pub arguments: ExpressionList,
 }
 impl Expression for Call {
-    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+    fn into_any_expression_enum(self) -> AnyExpressionEnum {
         AnyExpressionEnum::Call(self)
     }
     fn codegen_expression<'ctx>(
@@ -86,12 +82,12 @@ impl Expression for Call {
         Call {
             left: self.left.clone(),
             arguments: self.arguments.desugar()
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
     fn my_clone(&self) -> AnyExpressionEnum {
         Call {
             left: self.left.clone(),
             arguments: self.arguments.my_clone()
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
 }

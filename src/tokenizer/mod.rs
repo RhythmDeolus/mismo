@@ -70,8 +70,6 @@ impl<'a> Tokenizer<'a> {
 
     fn get_token(&mut self, t_type: TokenType, i: usize) -> Token {
         let mut literal: Vec<char> = vec!['a'; self.pointer - i];
-        println!("i: {}, p: {}", i, self.pointer);
-        println!("len: {}", literal.len());
         literal.copy_from_slice(&self.contents[i..self.pointer]);
         Token {
             t_type,

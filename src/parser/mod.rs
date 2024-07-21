@@ -175,7 +175,7 @@ impl Parser {
         Ok(VarDeclaration {
             identifier: i,
             expression: e,
-        }.as_any_statement_enum())
+        }.into_any_statement_enum())
     }
 
     fn expression(&mut self) -> PossibleExpression {
@@ -196,7 +196,7 @@ impl Parser {
                     left: Box::new(e),
                     right: Box::new(self.or()?),
                     op_type: Parser::map_to_boptype(ptt).unwrap(),
-                }.as_any_expression_enum();
+                }.into_any_expression_enum();
             } else {
                 self.error("Can't assign.")?
             }
@@ -234,7 +234,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum();
+            }.into_any_expression_enum();
         }
         Ok(e)
     }
@@ -248,7 +248,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum();
+            }.into_any_expression_enum();
         }
         Ok(e)
     }
@@ -308,7 +308,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum();
+            }.into_any_expression_enum();
         }
         Ok(e)
     }
@@ -323,7 +323,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum()
+            }.into_any_expression_enum()
         }
 
         Ok(e)
@@ -341,7 +341,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum();
+            }.into_any_expression_enum();
         }
 
         Ok(e)
@@ -362,7 +362,7 @@ impl Parser {
             Ok(UnaryOp {
                 operand: Box::new(self.unary()?),
                 op_type: Parser::map_to_uoptype(ptt).unwrap(),
-            }.as_any_expression_enum())
+            }.into_any_expression_enum())
         } else {
             self.index()
         }
@@ -383,7 +383,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum();
+            }.into_any_expression_enum();
         }
         Ok(e)
     }
@@ -397,7 +397,7 @@ impl Parser {
                 left: Box::new(e),
                 right: Box::new(a?),
                 op_type: Parser::map_to_boptype(ptt).unwrap(),
-            }.as_any_expression_enum()
+            }.into_any_expression_enum()
         }
 
         Ok(e)
@@ -504,8 +504,8 @@ impl Parser {
             expression: Box::new(InbuiltCall {
                             c_type: op.unwrap(),
                             arguments: el,
-                        }.as_any_expression_enum())
-        }.as_any_statement_enum())
+                        }.into_any_expression_enum())
+        }.into_any_statement_enum())
     }
 
     fn if_statement(&mut self) -> PossibleStatement {
@@ -521,7 +521,7 @@ impl Parser {
             expression: Box::new(e),
             block,
             else_block,
-        }.as_any_statement_enum())
+        }.into_any_statement_enum())
     }
 
     fn block(&mut self) -> Result<Block, CompilerError> {
@@ -539,7 +539,7 @@ impl Parser {
         Ok(WhileStatement {
             expression: Box::new(e),
             statement: Box::new(self.statement()?),
-        }.as_any_statement_enum())
+        }.into_any_statement_enum())
     }
 
     fn for_statement(&mut self) -> PossibleStatement {
@@ -567,7 +567,7 @@ impl Parser {
             check,
             change,
             statement,
-        }.as_any_statement_enum())
+        }.into_any_statement_enum())
     }
 
     fn function_declaration(&mut self) -> PossibleStatement {
@@ -595,8 +595,8 @@ impl Parser {
         Ok(FunctionDeclaration {
             name,
             parameters_list: pl,
-            body: block.as_any_statement_enum().boxed(),
-        }.as_any_statement_enum())
+            body: block.into_any_statement_enum().boxed(),
+        }.into_any_statement_enum())
     }
 
     fn return_statement(&mut self) -> PossibleStatement {
@@ -604,7 +604,7 @@ impl Parser {
             self.error("Can't write Return Statement in Global Scope")?;
         }
         let expression = Box::new(self.expression()?);
-        Ok(ReturnStatement { expression }.as_any_statement_enum())
+        Ok(ReturnStatement { expression }.into_any_statement_enum())
     }
     fn statement(&mut self) -> PossibleStatement {
         let v:Box<AnyStatementEnum> = if self.match_token(TokenType::Var) {
@@ -626,7 +626,7 @@ impl Parser {
             Box::new(v)
         } else if self.match_token(TokenType::OpenCurly) {
             let v = self.block()?;
-            Box::new(v.as_any_statement_enum())
+            Box::new(v.into_any_statement_enum())
         } else if self.match_token(TokenType::While) {
             let v = self.while_statement()?;
             Box::new(v)
@@ -649,7 +649,7 @@ impl Parser {
                 TokenType::Semicolon,
                 "Expected a semicolon after an expression",
             )?;
-            Box::new(ExpresssionStatement { expression: Box::new(v) }.as_any_statement_enum())
+            Box::new(ExpresssionStatement { expression: Box::new(v) }.into_any_statement_enum())
         };
         Ok(*v)
     }
@@ -741,7 +741,7 @@ mod tests {
         let s = "{}";
         let o = Block {
             statements: vec![]
-        }.as_any_statement_enum();
+        }.into_any_statement_enum();
         check_for(o, s);
     }
 
@@ -770,14 +770,14 @@ mod tests {
             let bo = BinaryOp {
                 left: Box::new(Identifier {
                                     name: "a".to_string()
-                                }.as_any_expression_enum()),
+                                }.into_any_expression_enum()),
                 right: Box::new(Identifier {
                                     name: "b".to_string()
-                                }.as_any_expression_enum()),
+                                }.into_any_expression_enum()),
                 op_type: y
             };
 
-            let stmt = wrap_expression(bo.as_any_expression_enum());
+            let stmt = wrap_expression(bo.into_any_expression_enum());
 
             let st = format!("a {} b;" , x);
             check_for(stmt, &st);
@@ -790,14 +790,14 @@ mod tests {
             let bo = BinaryOp {
                 left: Box::new(Identifier {
                                     name: "a".to_string()
-                                }.as_any_expression_enum()),
+                                }.into_any_expression_enum()),
                 right: Box::new(Identifier {
                                     name: "b".to_string()
-                                }.as_any_expression_enum()),
+                                }.into_any_expression_enum()),
                 op_type: y
             };
 
-            let stmt = wrap_expression(bo.as_any_expression_enum());
+            let stmt = wrap_expression(bo.into_any_expression_enum());
 
             check_for(stmt, x);
         }
@@ -807,7 +807,7 @@ mod tests {
     fn wrap_expression(expr: AnyExpressionEnum) -> AnyStatementEnum {
         ExpresssionStatement {
             expression: Box::new(expr)
-        }.as_any_statement_enum()
+        }.into_any_statement_enum()
     }
 
     #[test]
@@ -820,11 +820,11 @@ mod tests {
             let uo = UnaryOp {
                 operand: Box::new(Identifier {
                                     name: "a".to_string()
-                                }.as_any_expression_enum()),
+                                }.into_any_expression_enum()),
                 op_type: y
             };
 
-            let stmt = wrap_expression(uo.as_any_expression_enum());
+            let stmt = wrap_expression(uo.into_any_expression_enum());
 
             let st = format!("{}a;" , x);
             check_for(stmt, &st);
@@ -837,7 +837,7 @@ mod tests {
         let ident = Identifier {
             name: "variable_name".to_string()
         };
-        let stmt = wrap_expression(ident.as_any_expression_enum());
+        let stmt = wrap_expression(ident.into_any_expression_enum());
         check_for(stmt, s);
     }
 
@@ -851,26 +851,26 @@ mod tests {
                 expressions: vec![]
             }
         };
-        let stmt = wrap_expression(ident.as_any_expression_enum());
+        let stmt = wrap_expression(ident.into_any_expression_enum());
         check_for(stmt, s);
     }
 
     #[test]
     fn test_literal_exprs() {
         let s_to_stmt: Vec<(_, AnyExpressionEnum)> = vec![
-        ("\"hello world\";", StringLiteral { val: "hello world".to_string() }.as_any_expression_enum()),
-        ("1.0;", NumberLiteral { val: "1.0".to_string() }.as_any_expression_enum()),
+        ("\"hello world\";", StringLiteral { val: "hello world".to_string() }.into_any_expression_enum()),
+        ("1.0;", NumberLiteral { val: "1.0".to_string() }.into_any_expression_enum()),
         ("[1, 2];", ArrayLiteral {
                 expressions: ExpressionList {
                     expressions: vec![
-                    NumberLiteral{val:"1".to_string(),}.as_any_expression_enum().boxed(),
-                    NumberLiteral{val:"2".to_string(),}.as_any_expression_enum().boxed()
+                    NumberLiteral{val:"1".to_string(),}.into_any_expression_enum().boxed(),
+                    NumberLiteral{val:"2".to_string(),}.into_any_expression_enum().boxed()
                     ]
                 }
-            }.as_any_expression_enum()),
-        ("false;", False {}.as_any_expression_enum()),
-        ("true;", True {}.as_any_expression_enum()),
-        ("none;", NoneVal {}.as_any_expression_enum()),
+            }.into_any_expression_enum()),
+        ("false;", False {}.into_any_expression_enum()),
+        ("true;", True {}.into_any_expression_enum()),
+        ("none;", NoneVal {}.into_any_expression_enum()),
         ];
 
         for (x, y) in s_to_stmt {

@@ -51,7 +51,7 @@ impl Expression for BinaryOp {
         }
     }
 
-    fn as_any_expression_enum(self) -> AnyExpressionEnum {
+    fn into_any_expression_enum(self) -> AnyExpressionEnum {
         AnyExpressionEnum::Binary(self)
     }
 
@@ -60,14 +60,13 @@ impl Expression for BinaryOp {
             left: self.left.my_clone().boxed(),
             right: self.right.my_clone().boxed(),
             op_type: self.op_type
-        }.as_any_expression_enum()
+        }.into_any_expression_enum()
     }
 
     fn codegen_expression<'a>(
         &self,
         codegen: &'a crate::codegen::CodeGen,
     ) -> inkwell::values::AnyValueEnum<'a> {
-        println!("{:?}", self.op_type);
         if let BinaryOpType::Assign = self.op_type {
             let lhs = self.left.get_pointer(codegen);
             let rhs = self.right.codegen_expression(codegen);
@@ -214,14 +213,14 @@ impl Expression for BinaryOp {
                                             left,
                                             right,
                                             op_type: BinaryOp::map_assign_op_to(self.op_type)
-                                        }.as_any_expression_enum())
-                }.as_any_expression_enum()
+                                        }.into_any_expression_enum())
+                }.into_any_expression_enum()
             }
             _ => BinaryOp {
                 left,
                 right,
                 op_type: self.op_type
-            }.as_any_expression_enum()
+            }.into_any_expression_enum()
         }
     }
 }

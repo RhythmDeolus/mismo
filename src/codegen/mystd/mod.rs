@@ -1,5 +1,4 @@
-use std::{fs::OpenOptions, time::SystemTime};
-use std::io::prelude::*;
+use std::time::SystemTime;
 
 pub extern fn print_time() {
     let t =  SystemTime::now().duration_since(SystemTime::UNIX_EPOCH);
@@ -26,11 +25,5 @@ pub extern fn get_time() -> f64 {
 }
 
 pub extern fn print(a: f64) {
-    let mut file = OpenOptions::new()
-        .append(true)
-        .open("./tests/temp.out.txt")
-        .unwrap();
-    let x = writeln!(file, "{}", a);
-    println!("{:?}", x);
     println!("{}", a);
 }

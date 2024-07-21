@@ -1,11 +1,10 @@
-use mismo::{codegen::CodeGen, compiler};
-
-use std::{env, fs, panic::{catch_unwind, AssertUnwindSafe}};
+use std::{env, fs, panic::catch_unwind, process::Command};
 
 #[test]
 fn test_cases() {
+    let _ = log4rs::init_file("/logs/test/log4rs.yaml", Default::default());
     env::set_var("RUST_BACKTRACE", "1");
-    let paths = fs::read_dir("./tests/cases").unwrap();
+    let paths = fs::read_dir("tests/cases").unwrap();
     let paths: Vec<String> = paths.map(|x| x.unwrap().path().to_str().unwrap().to_string()).collect();
     let (mut input_paths, mut output_paths): (Vec<_>, Vec<_>) = paths.into_iter().partition(|x| x.ends_with(".mi"));
     input_paths.sort();
@@ -14,22 +13,18 @@ fn test_cases() {
     let mut successes = vec![];
     let n = input_paths.len();
     for i in 0..n {
-        // if i > 5 {
-        //     break;
-        // }
         eprintln!("Testing for: {} and {}", input_paths[i], output_paths[i]);
         let result = catch_unwind(|| {
-            let _ = fs::write("./tests/temp.out.txt", "");
-            let input_text = fs::read_to_string(input_paths[i].clone()).unwrap();
+            let test_output = Command::new("cargo")
+                .arg("run")
+                .arg(input_paths[i].clone())
+                .output()
+                .unwrap();
+            let test_output = String::from_utf8(test_output.stdout).unwrap();
             let output_text = fs::read_to_string(output_paths[i].clone()).unwrap();
-            let comp = compiler::Compiler::create();
-            let context = compiler::Compiler::get_context();
-            let codegen = compiler::Compiler::get_codegen(&context);
             // let codegen_static: &CodeGen<'static> = unsafe { std::mem::transmute(&codegen) };
-            comp.run(&codegen, input_text.chars().collect());
-            let content = fs::read_to_string("./tests/temp.out.txt").unwrap();
-            println!("?: {} = {}", content, output_text);
-            assert_eq!(content, output_text);
+            println!("?: {} = {}", test_output, output_text);
+            assert_eq!(test_output, output_text);
         });
         successes.push((input_paths[i].clone(), result));
     }
@@ -47,4 +42,5 @@ fn test_cases() {
         }
     }
     println!("Total: {}/{}", i, successes.len());
+    assert_eq!(i, successes.len());
 }

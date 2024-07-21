@@ -32,12 +32,7 @@ pub enum AnyExpressionEnum {
 
 impl AnyExpressionEnum {
     pub fn is_assignable(&self) -> bool {
-        match self {
-            AnyExpressionEnum::Identifier(_) => {
-                true
-            }
-            _ => false
-        }
+        matches!(self, AnyExpressionEnum::Identifier(_))
     }
     pub fn boxed(self) -> Box<Self> {
         Box::new(self)
@@ -58,7 +53,7 @@ impl AnyExpressionEnum {
         AnyExpressionEnum::NoneVal(x) => x.desugar(),
         }
     }
-    pub fn codegen_expression<'a, 'b>(&self, codegen: &'a CodeGen<'b>) -> inkwell::values::AnyValueEnum<'a> {
+    pub fn codegen_expression<'a>(&self, codegen: &'a CodeGen<'_>) -> inkwell::values::AnyValueEnum<'a> {
         match self {
             AnyExpressionEnum::Binary(x) => x.codegen_expression(codegen),
             AnyExpressionEnum::Unary(x) => x.codegen_expression(codegen),
@@ -113,7 +108,7 @@ pub trait Expression: Debug {
     fn is_assignable(&self) -> bool {
         false
     }
-    fn codegen_expression<'a, 'b>(&self, codegen: &'a CodeGen<'b>) -> inkwell::values::AnyValueEnum<'a> {
+    fn codegen_expression<'a>(&self, codegen: &'a CodeGen<'_>) -> inkwell::values::AnyValueEnum<'a> {
         codegen.context.f64_type().const_zero().as_any_value_enum()
     }
     fn get_pointer<'a>(&self, _ : &'a CodeGen) -> VariableReference<'a> {
@@ -121,6 +116,6 @@ pub trait Expression: Debug {
     }
     fn my_clone(&self) -> AnyExpressionEnum;
     fn desugar(self) -> AnyExpressionEnum;
-    fn as_any_expression_enum(self) -> AnyExpressionEnum;
+    fn into_any_expression_enum(self) -> AnyExpressionEnum;
 }
 
