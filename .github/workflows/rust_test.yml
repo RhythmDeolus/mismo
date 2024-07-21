@@ -3,7 +3,7 @@ name: Rust Test
 on: 
   pull_request:
     branches:
-      - main
+      - master
 
 env:
   LLMV_SYS_PREFIX_140: ./llvm
