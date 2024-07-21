@@ -4,9 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.5.9", features = ["derive"] }
 duplicate = "1.0.0"
 dyn-clone = "1.0.17"
-inkwell = { git = "https://github.com/TheDan64/inkwell.git", branch = "master" , features = ["llvm14-0-force-dynamic"] }
-log = "0.4.22"
-log4rs = "1.3.0"
+inkwell = { git = "https://github.com/TheDan64/inkwell.git", branch = "master" , features = ["llvm14-0-force-static"] }
