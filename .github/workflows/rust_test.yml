@@ -17,12 +17,13 @@ jobs:
         rust: [stable]
 
     steps:
-    - uses: actions/checkout@master
 
     - name: Install rust
       uses: hecrj/setup-rust-action@v2
       with:
         rust-version: ${{ matrix.rust }}
+
+    - uses: actions/checkout@master
     
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v2
