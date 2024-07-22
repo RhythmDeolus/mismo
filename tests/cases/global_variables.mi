@@ -7,3 +7,11 @@ func v () {
 print a;
 v();
 print a;
+
+func init() {
+    return 3;
+}
+
+var g = init();
+
+print g;

@@ -108,7 +108,8 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn allocate_variable(& self, name: &str) {
         let curr_scope = self.curr_scope.lock().unwrap();
         if *curr_scope == 0 {
-            self.module.add_global(self.context.f64_type(), None, name);
+            let gval = self.module.add_global(self.context.f64_type(), None, name);
+            gval.set_initializer(&self.context.f64_type().const_zero());
             return;
         }
         let curr_block = self.builder.get_insert_block().unwrap();
