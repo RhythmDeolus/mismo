@@ -19,7 +19,7 @@ impl Statement for VarDeclaration {
                     let _ = codegen.builder.build_store(lhs, val.into_float_value());
                 }
                 crate::codegen::VariableReference::Global(lhs) => {
-                    lhs.set_initializer(&val.into_float_value());
+                    let _ = codegen.builder.build_store(lhs.as_pointer_value(), val.into_float_value());
                 }
             }
         } else {
