@@ -1,9 +1,11 @@
 # Mismo
-<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/RhythmDeolus/mismo/rust_test.yml">
-<img alt="GitHub top language" src="https://img.shields.io/github/languages/top/RhythmDeolus/mismo">
-<img alt="GitHub repo size" src="https://img.shields.io/github/repo-size/RhythmDeolus/mismo">
-<img alt="Github commit activity" src="https://img.shields.io/github/commit-activity/m/RhythmDeolus/mismo" />
-<img alt="GitHub contributors" src="https://img.shields.io/github/contributors/RhythmDeolus/mismo">
+<div id="badges">
+    <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/RhythmDeolus/mismo/rust_test.yml" />
+    <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/RhythmDeolus/mismo" />
+    <img alt="GitHub repo size" src="https://img.shields.io/github/repo-size/RhythmDeolus/mismo" />
+    <img alt="Github commit activity" src="https://img.shields.io/github/commit-activity/m/RhythmDeolus/mismo" />
+    <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/RhythmDeolus/mismo" />
+</div>
 
 
 ## Prerequisites
