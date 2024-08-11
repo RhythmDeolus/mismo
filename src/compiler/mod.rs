@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::SystemTime};
 
 use inkwell::{
      context::Context, passes, targets::{CodeModel, Target, TargetMachine}
@@ -13,6 +13,7 @@ pub struct Compiler {
     pub keywords_to_tokentype: HashMap<&'static str, TokenType>,
     pub tokentype_to_keyword: HashMap<TokenType, &'static str>,
     pub show_info: bool,
+    pub show_time: bool,
 }
 
 impl<'ctx> Compiler {
@@ -42,12 +43,17 @@ impl<'ctx> Compiler {
         Compiler {
             keywords_to_tokentype: map,
             tokentype_to_keyword: map2,
-            show_info: false
+            show_info: false,
+            show_time: false
         }
     }
 
     pub fn set_show_info(&mut self, val: bool) {
         self.show_info = val;
+    }
+    
+    pub fn set_show_time(&mut self, val: bool) {
+        self.show_time = val;
     }
 
     pub fn get_context() -> Context {
@@ -99,7 +105,13 @@ impl<'ctx> Compiler {
         }
     }
 
+    fn get_time_now() -> u128 {
+        SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis()
+    }
+
     pub fn run(&self, codegen: &CodeGen<'ctx>, contents:  Vec<char>) {
+        let time_compile_1 = Compiler::get_time_now();
+        let t1 = Compiler::get_time_now();
         // tokenization
         let mut tokenizer = Tokenizer::create(&contents);
         let mut tokens = vec![];
@@ -110,11 +122,20 @@ impl<'ctx> Compiler {
             }
             tokens.push(x);
         }
+        let t2 = Compiler::get_time_now();
+        if self.show_time {
+            println!("Tokenization time: {}ms", t2 - t1);
+        }
 
+        let t1 = Compiler::get_time_now();
         // parsing
         let mut parser = Parser::create(tokens);
 
         let statements = parser.parse_statements();
+        let t2 = Compiler::get_time_now();
+        if self.show_time {
+            println!("Parsing time: {}ms", t2 - t1);
+        }
 
         //printing info
         if self.show_info {
@@ -128,18 +149,25 @@ impl<'ctx> Compiler {
             }
         }
 
+        let t1 = Compiler::get_time_now();
         // de-sugaring
         let mut desugared_statements = vec![];
 
         for stmt in statements {
             desugared_statements.push(stmt.desugar())
         }
+        let t2 = Compiler::get_time_now();
+        if self.show_time {
+            println!("Desugaring time: {}ms", t2 - t1);
+        }
+
         //printing info
         if self.show_info {
             Compiler::print_statements(&desugared_statements);
         }
 
 
+        let t1 = Compiler::get_time_now();
         // code generation
         for stmt in desugared_statements {
             codegen.codegen(stmt);
@@ -177,14 +205,27 @@ impl<'ctx> Compiler {
             println!("{}", codegen.module.to_string());
             println!("{}", codegen.main);
         }
+        let t2 = Compiler::get_time_now();
+        if self.show_time {
+            println!("Code generation time: {}ms", t2 - t1);
+        }
+        let time_compile_2 = Compiler::get_time_now();
+        if self.show_time {
+            println!("Compile time: {}ms", time_compile_2 - time_compile_1);
+        }
 
 
+        let t1 = Compiler::get_time_now();
         // jit compilation & execution
         unsafe {
             let _ = codegen.execution_engine.add_module(&codegen.module);
             codegen.execution_engine.run_function(codegen.main, &[]);
             let _ = codegen.execution_engine.remove_module(&codegen.module);
         };
+        let t2 = Compiler::get_time_now();
+        if self.show_time {
+            println!("Execution time: {}ms", t2 - t1);
+        }
         
         // resetting main function
         for x in codegen.main.get_basic_block_iter() {
