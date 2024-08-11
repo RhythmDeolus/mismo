@@ -14,6 +14,9 @@ struct Args {
 
     #[arg(short, long, help = "Print debug info as well")]
     show_debug_info: bool,
+    
+    #[arg(long, help = "Show time for compilation and execution")]
+    show_time: bool,
 }
 
 fn main() {
@@ -32,6 +35,9 @@ fn main() {
                     let mut compiler = Compiler::create();
                     if args.show_debug_info {
                         compiler.set_show_info(true);
+                    }
+                    if args.show_time {
+                        compiler.set_show_time(true);
                     }
                     let context  = Compiler::get_context();
                     let codegen = Compiler::get_codegen(&context);
