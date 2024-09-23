@@ -6,9 +6,11 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
-use inkwell::values::{FunctionValue, GlobalValue,  PointerValue};
+use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
 use inkwell::OptimizationLevel;
 
+use crate::parser::statements::blocks::Block;
+use crate::parser::statements::func_decls::FunctionDeclaration;
 use crate::parser::statements::AnyStatementEnum;
 
 pub mod mystd;
@@ -70,9 +72,10 @@ impl<'ctx> CodeGen<'ctx> {
         self.execution_engine
             .add_global_mapping(&extf, mystd::print_time as usize);
         let ft = self.context.f64_type();
-        let fnt2 =  ft.fn_type(&[], false);
+        let fnt2 = ft.fn_type(&[], false);
         let extf3 = self.module.add_function("get_time", fnt2, None);
-        self.execution_engine.add_global_mapping(&extf3, mystd::get_time as usize);
+        self.execution_engine
+            .add_global_mapping(&extf3, mystd::get_time as usize);
         let fnt2 = void_type.fn_type(&[ft.into()], false);
         let extf2 = self.module.add_function("print", fnt2, None);
         self.execution_engine
@@ -85,11 +88,10 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn push_func_stack(&self, func: FunctionValue<'ctx>) {
         self.fun_stack.lock().unwrap().push(func);
     }
-    
-    pub fn pop_func_stack(&self) -> Option<FunctionValue<'ctx>>{
+
+    pub fn pop_func_stack(&self) -> Option<FunctionValue<'ctx>> {
         self.fun_stack.lock().unwrap().pop()
     }
-
 
     pub fn get_variable(&self, name: &str) -> Option<VariableReference> {
         for (_, x, y) in self.scoped_variables.lock().unwrap().iter().rev() {
@@ -105,7 +107,7 @@ impl<'ctx> CodeGen<'ctx> {
         *curr_scope += 1;
     }
 
-    pub fn allocate_variable(& self, name: &str) {
+    pub fn allocate_variable(&self, name: &str) {
         let curr_scope = self.curr_scope.lock().unwrap();
         if *curr_scope == 0 {
             let gval = self.module.add_global(self.context.f64_type(), None, name);
@@ -139,8 +141,36 @@ impl<'ctx> CodeGen<'ctx> {
             .builder
             .build_store(ptr, self.context.f64_type().const_zero());
         self.scoped_variables
-            .lock().unwrap().push((*curr_scope, name.to_string(), ptr));
+            .lock()
+            .unwrap()
+            .push((*curr_scope, name.to_string(), ptr));
         self.builder.position_at_end(curr_block);
+    }
+
+    pub fn hoist_statements_boxed(&self, stmts: &Vec<Box<AnyStatementEnum>>) {
+        for stmt in stmts {
+            if let AnyStatementEnum::FunctionDeclaration(x) = stmt.as_ref() {
+                self.define_func(x);
+            }
+        }
+    }
+
+    pub fn hoist_statements(&self, stmts: &Vec<AnyStatementEnum>) {
+        for stmt in stmts {
+            if let AnyStatementEnum::FunctionDeclaration(x) = stmt {
+                self.define_func(x);
+            }
+        }
+    }
+
+    pub fn define_func(&self, x: &FunctionDeclaration) {
+        let ft = self.context.f64_type();
+        let mut params = vec![];
+        for _ in &x.parameters_list {
+            params.push(ft.into());
+        }
+        let fnt = ft.fn_type(&params, false);
+        let _ = self.module.add_function(&x.name, fnt, None);
     }
 
     pub fn decrease_scope(&self) {
@@ -161,7 +191,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    pub fn codegen(&self, stmt:  AnyStatementEnum) {
+    pub fn codegen(&self, stmt: &AnyStatementEnum) {
         stmt.generate_code(self);
     }
 }

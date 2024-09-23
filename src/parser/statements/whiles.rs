@@ -11,9 +11,9 @@ impl Statement for WhileStatement {
     fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         let parent = codegen.builder.get_insert_block().unwrap();
         let fun = parent.get_parent().unwrap();
-        let condition_block = codegen.context.append_basic_block(fun, "");
-        let body_block = codegen.context.append_basic_block(fun, "");
-        let return_block = codegen.context.append_basic_block(fun, "");
+        let condition_block = codegen.context.append_basic_block(fun, "condition_block");
+        let body_block = codegen.context.append_basic_block(fun, "body_block");
+        let return_block = codegen.context.append_basic_block(fun, "return_block");
         // hack
         codegen.builder.build_unconditional_branch(condition_block).unwrap();
         //
