@@ -61,6 +61,12 @@ impl AnyStatementEnum {
             _ => None
         }
     }
+    pub fn as_block(&self) -> Option<&Block> {
+        match self {
+            AnyStatementEnum::Block(x) => Some(x),
+            _ => None
+        }
+    }
 }
 
 

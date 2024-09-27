@@ -1,0 +1,13 @@
+func a(var n) {
+    if (n == 0) return 0;
+    print n;
+    b(n-1);
+}
+
+func b(var n) {
+    if (n == 0) return 0;
+    print n;
+    a(n-1);
+}
+
+a(3);

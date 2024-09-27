@@ -16,6 +16,14 @@ pub struct Compiler {
     pub show_time: bool,
 }
 
+fn unescape_string(s: &str) -> String {
+    s.replace("\\n", "\n")
+     .replace("\\t", "\t")
+     .replace("\\\"", "\"")
+     .replace("\\\\", "\\")
+}
+
+
 impl<'ctx> Compiler {
     pub fn create() -> Self {
         let map: HashMap<_, _> = HashMap::from([
@@ -169,21 +177,38 @@ impl<'ctx> Compiler {
 
         let t1 = Compiler::get_time_now();
         // code generation
-        for stmt in desugared_statements {
+        codegen.hoist_statements(&desugared_statements);
+
+        for stmt in &desugared_statements {
             codegen.codegen(stmt);
         }
+
         codegen.builder.position_at_end(codegen.main.get_last_basic_block().unwrap());
+
         let _ = codegen.builder.build_return(None);
         for x in codegen.main.get_basic_block_iter() {
             if  x.get_instructions().count() == 0 {
                 codegen.builder.position_at_end(x);
                 let _  = codegen.builder.build_unconditional_branch(x.get_next_basic_block().unwrap());
             }
+
+            // for instr in x.get_instructions() {
+            //     let res = instr.get_previous_instruction();
+            //     if let Some(prev) = res {
+            //         if instr.get_type() == prev.get_type() &&
+            //             instr.is_terminator() {
+            //             instr.remove_from_basic_block();
+            //         }
+            //     }
+            // }
         }
-        let can_work = codegen.main.verify(true);
-        if self.show_info && !can_work {
-            println!("{}", codegen.module.to_string());
-            panic!("Can't Compile!");
+        for func in codegen.module.get_functions() {
+            let can_work = func.verify(true);
+            if self.show_info && !can_work {
+                println!("For: {}\n", func.get_name().to_str().unwrap());
+                println!("{}", unescape_string(&func.to_string()));
+                panic!("Can't Compile!");
+            }
         }
 
         // optimization passes

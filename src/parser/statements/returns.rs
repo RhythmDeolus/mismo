@@ -27,7 +27,7 @@ impl Statement for ReturnStatement {
         };
         let _ = codegen.builder.build_store(retprt, e);
         codegen.return_points.lock().unwrap().push(return_point);
-        let then_block = codegen.context.append_basic_block(return_point.get_parent().unwrap(), "");
+        let then_block = codegen.context.append_basic_block(return_point.get_parent().unwrap(), "return_then");
         codegen.builder.position_at_end(then_block);
         codegen.print_module();
     }

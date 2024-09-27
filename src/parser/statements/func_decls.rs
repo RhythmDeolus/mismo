@@ -1,3 +1,4 @@
+
 use super::{AnyStatementEnum, Statement};
 
 #[derive(Debug)]
@@ -18,13 +19,8 @@ impl Statement for FunctionDeclaration {
     fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
         codegen.increase_scope();
         let prev_bb = codegen.builder.get_insert_block().unwrap();
-        let ft = codegen.context.f64_type();
-        let mut params = vec![];
-        for _ in &self.parameters_list {
-            params.push(ft.into());
-        }
-        let fnt = ft.fn_type(&params, false);
-        let func = codegen.module.add_function(&self.name, fnt, None);
+        codegen.hoist_statements_boxed(&self.body.as_block().unwrap().statements);
+        let func = codegen.module.get_function(&self.name).unwrap();
 
 
         codegen.push_func_stack(func);
@@ -58,14 +54,17 @@ impl Statement for FunctionDeclaration {
         let _ = codegen.builder.build_return(Some(&retv));
         //setting return points
         let prev_block = codegen.builder.get_insert_block().unwrap();
-        let return_points = codegen.return_points.lock().unwrap();
+        let mut return_points = codegen.return_points.lock().unwrap();
         for x in &*return_points {
             codegen.builder.position_at_end(*x);
             let _ = codegen.builder.build_unconditional_branch(return_block);
         }
+        // whats wrong with this?
+        return_points.clear();
         codegen.builder.position_at_end(prev_block);
         codegen.pop_func_stack();
         codegen.builder.position_at_end(prev_bb);
+        // clear return points without stuck in loop
         codegen.decrease_scope();
         codegen.print_module();
     }
