@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap, time::SystemTime};
+use std::{collections::HashMap, time::SystemTime};
 
 use inkwell::{
      context::Context, passes, targets::{CodeModel, Target, TargetMachine}

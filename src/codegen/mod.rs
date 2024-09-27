@@ -9,7 +9,6 @@ use inkwell::module::Module;
 use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
 use inkwell::OptimizationLevel;
 
-use crate::parser::statements::blocks::Block;
 use crate::parser::statements::func_decls::FunctionDeclaration;
 use crate::parser::statements::AnyStatementEnum;
 
