@@ -7,9 +7,6 @@ pub struct ExpresssionStatement {
     pub expression: Box<AnyExpressionEnum>,
 }
 impl Statement for ExpresssionStatement {
-    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
-        self.expression.codegen_expression(codegen);
-    }
     fn desugar(self) -> AnyStatementEnum {
         let e = self.expression.desugar().boxed();
         ExpresssionStatement {

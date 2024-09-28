@@ -4,16 +4,6 @@ pub struct Block {
     pub statements: Vec<Box<AnyStatementEnum>>,
 }
 impl Statement for Block {
-    fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
-        codegen.increase_scope();
-        // hoisting functions
-        codegen.hoist_statements_boxed(&self.statements);
-
-        for stmt in self.statements.iter() {
-            stmt.generate_code(codegen)
-        }
-        codegen.decrease_scope();
-    }
     fn desugar(self) -> AnyStatementEnum {
         let mut new_stmts = vec![];
         for stmt in self.statements {

@@ -42,18 +42,6 @@ impl AnyStatementEnum {
         Box::new(self)
     }
 
-    pub fn generate_code(& self, codegen : &crate::codegen::CodeGen) {
-        match self {
-            AnyStatementEnum::Block(x) => x.generate_code(codegen),
-            AnyStatementEnum::For(x) => x.generate_code(codegen),
-            AnyStatementEnum::FunctionDeclaration(x) => x.generate_code(codegen),
-            AnyStatementEnum::If(x) => x.generate_code(codegen),
-            AnyStatementEnum::Return(x) => x.generate_code(codegen),
-            AnyStatementEnum::VarDeclaration(x) => x.generate_code(codegen),
-            AnyStatementEnum::While(x) => x.generate_code(codegen),
-            AnyStatementEnum::Expression(x) => x.generate_code(codegen),
-        };
-    }
 
     pub fn as_var_declaration(&self) -> Option<&VarDeclaration> {
         match self {
@@ -71,9 +59,6 @@ impl AnyStatementEnum {
 
 
 pub trait Statement: Debug {
-    fn generate_code(& self, _ : &crate::codegen::CodeGen) {
-        println!("generating code..");
-    }
 
     fn desugar(self) -> AnyStatementEnum;
     fn into_any_statement_enum(self) -> AnyStatementEnum;
