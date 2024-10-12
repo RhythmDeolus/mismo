@@ -12,7 +12,12 @@ use inkwell::OptimizationLevel;
 use crate::parser::statements::func_decls::FunctionDeclaration;
 use crate::parser::statements::AnyStatementEnum;
 
+use self::statements::Generate;
+
+
 pub mod mystd;
+pub mod statements;
+pub mod expressions;
 
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
@@ -190,7 +195,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    pub fn codegen(&self, stmt: &AnyStatementEnum) {
+    pub fn codegen(&self, stmt: &dyn Generate) {
         stmt.generate_code(self);
     }
 }

@@ -1,9 +1,4 @@
-use core::panic;
 use std::fmt::Debug;
-
-use inkwell::values::AnyValue;
-
-use crate::codegen::{CodeGen, VariableReference};
 
 use self::{binary::BinaryOp, calls::{Call, InbuiltCall}, expr_list::ExpressionList, identifer::Identifier, literals::{ArrayLiteral, False, NoneVal, NumberLiteral, StringLiteral, True}, unary::UnaryOp};
 
@@ -53,38 +48,6 @@ impl AnyExpressionEnum {
         AnyExpressionEnum::NoneVal(x) => x.desugar(),
         }
     }
-    pub fn codegen_expression<'a>(&self, codegen: &'a CodeGen<'_>) -> inkwell::values::AnyValueEnum<'a> {
-        match self {
-            AnyExpressionEnum::Binary(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::Unary(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::Identifier(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::InbuiltCall(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::Call(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::StringLiteral(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::NumberLiteral(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::ArrayLiteral(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::ExpressionList(_) => unreachable!(),
-            AnyExpressionEnum::True(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::False(x) => x.codegen_expression(codegen),
-            AnyExpressionEnum::NoneVal(x) => x.codegen_expression(codegen),
-        }
-    }
-    pub fn get_pointer<'a>(&self, codegen : &'a CodeGen) -> VariableReference<'a> {
-        match self {
-            AnyExpressionEnum::Binary(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::Unary(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::Identifier(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::InbuiltCall(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::Call(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::StringLiteral(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::NumberLiteral(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::ArrayLiteral(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::ExpressionList(_) => unreachable!(),
-            AnyExpressionEnum::True(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::False(x) => x.get_pointer(codegen),
-            AnyExpressionEnum::NoneVal(x) => x.get_pointer(codegen),
-        }
-    }
     fn my_clone(&self) -> AnyExpressionEnum {
         match self {
             AnyExpressionEnum::Binary(x) => x.my_clone(),
@@ -107,12 +70,6 @@ impl AnyExpressionEnum {
 pub trait Expression: Debug {
     fn is_assignable(&self) -> bool {
         false
-    }
-    fn codegen_expression<'a>(&self, codegen: &'a CodeGen<'_>) -> inkwell::values::AnyValueEnum<'a> {
-        codegen.context.f64_type().const_zero().as_any_value_enum()
-    }
-    fn get_pointer<'a>(&self, _ : &'a CodeGen) -> VariableReference<'a> {
-        panic!("Can't get pointer");
     }
     fn my_clone(&self) -> AnyExpressionEnum;
     fn desugar(self) -> AnyExpressionEnum;
