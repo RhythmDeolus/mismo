@@ -6,6 +6,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
+use inkwell::types::StructType;
 use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
 use inkwell::OptimizationLevel;
 
@@ -15,9 +16,9 @@ use crate::parser::statements::AnyStatementEnum;
 use self::statements::Generate;
 
 
-pub mod mystd;
 pub mod statements;
 pub mod expressions;
+
 
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
@@ -29,7 +30,9 @@ pub struct CodeGen<'ctx> {
     pub return_points: Mutex<Vec<BasicBlock<'ctx>>>,
     pub fun_stack: Mutex<Vec<FunctionValue<'ctx>>>,
     pub curr_scope: Mutex<u16>,
+    pub value_type: Option<StructType<'ctx>>,
     pub show_info: bool,
+    dylib: Option<libloading::Library>
 }
 
 pub enum VariableReference<'a> {
@@ -60,7 +63,9 @@ impl<'ctx> CodeGen<'ctx> {
             return_points: Mutex::new(vec![]),
             scoped_variables: Mutex::new(vec![]),
             curr_scope: Mutex::new(0),
+            value_type: None,
             show_info: false,
+            dylib: None,
         })
     }
 
@@ -69,22 +74,69 @@ impl<'ctx> CodeGen<'ctx> {
             println!("Module: {}", self.module.to_string());
         }
     }
-    pub fn initialize(&self) {
+    pub fn initialize(&mut self) {
+        // compile print.cpp file here
+        let mut cmd = std::process::Command::new("g++");
+        cmd.arg("src/codegen/mystd/print.cpp")
+            .arg("-o")
+            .arg("src/codegen/mystd/libprint.so")
+            .arg("-shared")
+            .arg("-fPIC");
+
+        // run command
+        let output = cmd.output().expect("Failed to execute command");
+        if !output.status.success() {
+            panic!("Failed to compile print.cpp");
+        }
+
         let void_type = self.context.void_type();
         let fnt = void_type.fn_type(&[], false);
+        self.initialize_data_types();
         let extf = self.module.add_function("print_time", fnt, None);
-        self.execution_engine
-            .add_global_mapping(&extf, mystd::print_time as usize);
+        // self.execution_engine
+        //     .add_global_mapping(&extf, mystd::print_time as usize);
         let ft = self.context.f64_type();
         let fnt2 = ft.fn_type(&[], false);
         let extf3 = self.module.add_function("get_time", fnt2, None);
-        self.execution_engine
-            .add_global_mapping(&extf3, mystd::get_time as usize);
+        // self.execution_engine
+        //     .add_global_mapping(&extf3, mystd::get_time as usize);
         let fnt2 = void_type.fn_type(&[ft.into()], false);
+           
         let extf2 = self.module.add_function("print", fnt2, None);
-        self.execution_engine
-            .add_global_mapping(&extf2, mystd::print as usize);
+        // self.execution_engine
+        //     .add_global_mapping(&extf2, mystd::print as usize);
+        unsafe {
+            self.dylib = Some(libloading::Library::new("src/codegen/mystd/libprint.so").unwrap());
+            let lib = self.dylib.as_ref().unwrap(); // borrow from struct
+
+             // or "myfunc.dll" on Windows
+            let symbol: libloading::Symbol< unsafe extern "C" fn(f64)> = lib.get(b"print").unwrap();
+            let fn_ptr = *symbol as usize;
+            self.execution_engine.add_global_mapping(&extf2, fn_ptr);
+
+            let symbol: libloading::Symbol::<unsafe extern "C" fn()> = lib.get(b"print_time").unwrap();
+            let fn_ptr = *symbol as usize;
+            self.execution_engine.add_global_mapping(&extf, fn_ptr);
+
+            let symbol: libloading::Symbol::<unsafe extern "C" fn() -> f64> = lib.get(b"get_time").unwrap();
+            let fn_ptr = *symbol as usize;
+            self.execution_engine.add_global_mapping(&extf3, fn_ptr);
+        } 
+
     }
+
+    pub fn initialize_data_types(&mut self) {
+        let any_type = self.context.i8_type().ptr_type(inkwell::AddressSpace::default()).into();
+        self.value_type = Some(self.context.struct_type(&[self.context.i16_type().into(), any_type], false));
+        // create a Struct Value
+        let struct_type = self.value_type.unwrap();
+        // string type
+        #[allow(unused)]
+        let struct_val = struct_type.const_named_struct(&[self.context.i16_type().const_int(0, false).into(), self.context.i8_type().ptr_type(inkwell::AddressSpace::default()).const_null().into()]);
+
+    }
+    
+
 
     pub fn get_curr_func(&self) -> FunctionValue {
         *self.fun_stack.lock().unwrap().last().unwrap()

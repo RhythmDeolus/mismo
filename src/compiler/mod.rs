@@ -68,7 +68,7 @@ impl<'ctx> Compiler {
         CodeGen::get_context()
     }
     pub fn get_codegen(context: &Context) -> CodeGen {
-        let codegen = CodeGen::create(context).unwrap();
+        let mut codegen = CodeGen::create(context).unwrap();
         codegen.initialize();
         codegen
     }
@@ -244,6 +244,7 @@ impl<'ctx> Compiler {
         // jit compilation & execution
         unsafe {
             let _ = codegen.execution_engine.add_module(&codegen.module);
+            
             codegen.execution_engine.run_function(codegen.main, &[]);
             let _ = codegen.execution_engine.remove_module(&codegen.module);
         };
